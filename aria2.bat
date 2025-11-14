@@ -12,4 +12,5 @@ start /min aria2c --enable-rpc --rpc-listen-all --disable-ipv6=true --dir="!SCRI
 
 echo Aria2已启动，工作目录设置为: !SCRIPT_DIR!
 echo 按任意键退出...
+
 pause >nul
