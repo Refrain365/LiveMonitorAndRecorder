@@ -1,2 +1,2 @@
 # LiveMonitorAndRecorder
-这是一个基于Python编程，Aria2和ffmpeg的，支持douyin，bilibili的主播直播状态监控提醒，以及douyin直播间录制的Windows x64的电脑软件（可以录制任意画质的直播流）。目标是做最稳定和全能的直播间监控录制助手！
+这是一个直播监控录制助手。项目基于Python编程，Aria2和ffmpeg。支持douyin，bilibili的主播直播状态监控提醒；以及douyin直播间录制(可录制任意画质的直播流)。发行版支持Windows 64位系统。目标是做最稳定和全能的直播间监控录制助手！
