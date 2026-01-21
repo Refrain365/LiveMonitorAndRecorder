@@ -24,7 +24,7 @@ from typing import List, Dict
 base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 
 # 定义需要复制的文件列表
-files_to_copy = ['ffmpeg.exe']
+files_to_copy = ['ffmpeg.exe','高级系统设置.lnk']
 
 # 复制文件到当前运行目录
 for file in files_to_copy:
@@ -917,7 +917,7 @@ HEADERS = {
 def get_current_datetime_string():
     """获取当前日期时间字符串，格式为YYYYMMDD_HHMMSS"""
     now = datetime.now()
-    return now.strftime("%Y%m%d_%H%M%S")
+    return now.strftime("%Y%m%d-%H%M%S")
 
 def generate_filename(quality_suffix=""):
     """生成文件名，保存在当前工作目录下"""
@@ -925,7 +925,7 @@ def generate_filename(quality_suffix=""):
 
     if SPECIFIED_NAME and SPECIFIED_NAME.strip():
         if quality_suffix:
-            return f"{SPECIFIED_NAME}_{datetime_str}_{quality_suffix}.flv"  # 返回相对路径
+            return f"{SPECIFIED_NAME}-{datetime_str}-抖音-{SPECIFIED_NAME}_{quality_suffix}.flv"  # 返回相对路径
         else:
             return f"{SPECIFIED_NAME}_{datetime_str}.flv"
     else:
@@ -1397,7 +1397,7 @@ HEADERS = {
 def get_current_datetime_string():
     """获取当前日期时间字符串，格式为YYYYMMDD_HHMMSS"""
     now = datetime.now()
-    return now.strftime("%Y%m%d_%H%M%S")
+    return now.strftime("%Y%m%d-%H%M%S")
 
 def generate_filename(quality_suffix=""):
     """生成文件名，保存在当前工作目录下"""
@@ -1405,7 +1405,7 @@ def generate_filename(quality_suffix=""):
 
     if SPECIFIED_NAME and SPECIFIED_NAME.strip():
         if quality_suffix:
-            return f"{SPECIFIED_NAME}_{datetime_str}_{quality_suffix}.flv"  # 返回相对路径
+            return f"{SPECIFIED_NAME}-{datetime_str}-抖音-{SPECIFIED_NAME}_{quality_suffix}.flv"  # 返回相对路径
         else:
             return f"{SPECIFIED_NAME}_{datetime_str}.flv"
     else:
@@ -1877,7 +1877,7 @@ HEADERS = {
 def get_current_datetime_string():
     """获取当前日期时间字符串，格式为YYYYMMDD_HHMMSS"""
     now = datetime.now()
-    return now.strftime("%Y%m%d_%H%M%S")
+    return now.strftime("%Y%m%d-%H%M%S")
 
 def generate_filename(quality_suffix=""):
     """生成文件名，保存在当前工作目录下"""
@@ -1885,7 +1885,7 @@ def generate_filename(quality_suffix=""):
 
     if SPECIFIED_NAME and SPECIFIED_NAME.strip():
         if quality_suffix:
-            return f"{SPECIFIED_NAME}_{datetime_str}_{quality_suffix}.flv"  # 返回相对路径
+            return f"{SPECIFIED_NAME}-{datetime_str}-抖音-{SPECIFIED_NAME}_{quality_suffix}.flv"  # 返回相对路径
         else:
             return f"{SPECIFIED_NAME}_{datetime_str}.flv"
     else:
@@ -2354,7 +2354,7 @@ HEADERS = {
 def get_current_datetime_string():
     """获取当前日期时间字符串，格式为YYYYMMDD_HHMMSS"""
     now = datetime.now()
-    return now.strftime("%Y%m%d_%H%M%S")
+    return now.strftime("%Y%m%d-%H%M%S")
 
 def generate_filename(quality_suffix=""):
     """生成文件名，保存在当前工作目录下"""
@@ -2362,7 +2362,7 @@ def generate_filename(quality_suffix=""):
 
     if SPECIFIED_NAME and SPECIFIED_NAME.strip():
         if quality_suffix:
-            return f"{SPECIFIED_NAME}_{datetime_str}_{quality_suffix}.flv"  # 返回相对路径
+            return f"{SPECIFIED_NAME}-{datetime_str}-抖音-{SPECIFIED_NAME}_{quality_suffix}.flv"  # 返回相对路径
         else:
             return f"{SPECIFIED_NAME}_{datetime_str}.flv"
     else:
@@ -2833,7 +2833,7 @@ HEADERS = {
 def get_current_datetime_string():
     """获取当前日期时间字符串，格式为YYYYMMDD_HHMMSS"""
     now = datetime.now()
-    return now.strftime("%Y%m%d_%H%M%S")
+    return now.strftime("%Y%m%d-%H%M%S")
 
 def generate_filename(quality_suffix=""):
     """生成文件名，保存在当前工作目录下"""
@@ -2841,7 +2841,7 @@ def generate_filename(quality_suffix=""):
 
     if SPECIFIED_NAME and SPECIFIED_NAME.strip():
         if quality_suffix:
-            return f"{SPECIFIED_NAME}_{datetime_str}_{quality_suffix}.flv"  # 返回相对路径
+            return f"{SPECIFIED_NAME}-{datetime_str}-抖音-{SPECIFIED_NAME}_{quality_suffix}.flv"  # 返回相对路径
         else:
             return f"{SPECIFIED_NAME}_{datetime_str}.flv"
     else:
@@ -3229,6 +3229,7 @@ if __name__ == "__main__":
         return r'''@echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
+ping -n 30 127.0.0.1 >nul
 
 :: 获取主程序所在目录
 if defined _argv (
@@ -3304,6 +3305,7 @@ ping -n 10 127.0.0.1 >nul
         return r'''@echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
+ping -n 30 127.0.0.1 >nul
 
 :: 获取主程序所在目录
 if defined _argv (
@@ -4393,7 +4395,7 @@ class LiveMonitorApp:
         # 在初始化界面之前检查启动次数并显示开源声明
         if not self.show_opensource_declaration():
             return  # 用户未确认，直接退出程序
-        self.root.title("直播间监控录制助手 v1.0.6[抖音和b站]")
+        self.root.title("直播间监控录制助手 v1.0.7[抖音和b站][By.bilibili@真理的中点]")
         self.root.geometry("1020x720")
 
         # ===== 先初始化所有变量 =====
@@ -4443,6 +4445,28 @@ class LiveMonitorApp:
         self.aria2_port = tk.StringVar(value="6800")
         self.aria2_secret = tk.StringVar()
 
+        # 监控速度档位（1档为原始速度，数值越大越慢）
+        self.monitor_speed_level = tk.IntVar(value=1)
+        self.monitor_speed_desc = {
+            1: "1档（原始速度）",
+            2: "2档（稍慢）",
+            3: "3档（中等慢）",
+            4: "4档（较慢）",
+            5: "5档（最慢）",
+        }
+        # 高级设置预览文本
+        self.monitor_speed_every_preview = tk.StringVar(value="")
+        self.monitor_speed_cycle_preview = tk.StringVar(value="")
+        
+        # 勿扰/休眠时段配置
+        # 格式: [{"start": "HH:MM", "end": "HH:MM"}, ...]
+        self.do_not_disturb_periods = []  # 勿扰时段列表
+        self.sleep_periods = []  # 休眠时段列表
+        
+        # 定时调速配置
+        # 格式: [{"start": "HH:MM", "end": "HH:MM", "level": 1-5}, ...]
+        self.scheduled_speed_periods = []  # 定时调速时段列表
+
         # ===========================
 
         # 界面初始化
@@ -4473,6 +4497,14 @@ class LiveMonitorApp:
         self.auto_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.auto_tab, text="自动化任务")
         self._setup_auto_tab()
+
+        # 高级设置标签页（放在自动化任务之后）
+        self.advanced_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.advanced_tab, text="高级设置")
+        self._setup_advanced_tab()
+
+        # 绑定tab切换事件，切换到高级设置时刷新预览文本
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
 
         self.status_var = tk.StringVar(value="就绪")
         status_bar = tk.Label(root, textvariable=self.status_var, bd=1, relief=tk.SUNKEN, anchor=tk.W)
@@ -4644,11 +4676,12 @@ class LiveMonitorApp:
         declaration_text = """亲爱的用户您好，本程序已经在github和gitee上同步开源，并且完全免费使用！
 如果您是付费购买用户，那么恭喜你被骗了，请立刻关闭这个程序并举报卖家！
 请用户认准正版渠道：
-github仓库地址：xxx
-gitee仓库地址：xxx
-1.0.6版本正版指定蓝奏云地址：xxx
+github仓库地址：https://github.com/Refrain365/LiveMonitorAndRecorder
+gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
+1.0.7版本正版指定蓝奏云地址：https://wwamm.lanzouv.com/b014x0j3ah 提取码见发行版说明
 首次启动没有此弹窗的，或者是弹窗内容被恶意篡改的，都不是官方发行版！
-开发者不会为使用了非官方发行版的用户承担任何责任。"""
+开发者不会为使用了非官方发行版的用户承担任何责任。
+本程序作者：bilibili@真理的中点"""
 
         # 文本区域
         text_widget = tk.Text(content_frame, wrap=tk.WORD, font=("Arial", 11), height=15)
@@ -5103,7 +5136,7 @@ gitee仓库地址：xxx
 
             # 方法3: 尝试通过命令行获取完整版本
             try:
-                result = subprocess.run(["msedge", "--version"], capture_output=True, text=True, timeout=5)
+                result = subprocess.run(["msedge", "--version"], capture_output=True, text=True, encoding='cp1252', errors='ignore', timeout=5)
                 if result.returncode == 0:
                     match = re.search(r"(\d+\.\d+\.\d+\.\d+)", result.stdout)
                     if match:
@@ -5146,7 +5179,7 @@ gitee仓库地址：xxx
             try:
                 # 备用方法：使用wmic
                 info = subprocess.run(['wmic', 'datafile', 'where', f'name="{file_path}"', 'get', 'Version'],
-                                      capture_output=True, text=True, timeout=10)
+                                      capture_output=True, text=True, encoding='cp1252', errors='ignore', timeout=10)
                 lines = info.stdout.strip().split('\n')
                 if len(lines) > 1:
                     return lines[1].strip()
@@ -5391,7 +5424,7 @@ gitee仓库地址：xxx
         help_label1.grid(row=1, column=0, columnspan=9, padx=5, pady=2, sticky=tk.W)
 
         # 第二行说明
-        help_text2 = "如果要正常录播，还需要自行安装Python环境（分享链接里有），将其加入到系统环境变量，并补全必要的模块"
+        help_text2 = "如果要正常录播，还需要自行安装Python环境（分享链接里有），将其加入到用户变量，并补全必要的模块"
         help_label2 = ttk.Label(add_frame, text=help_text2)
         help_label2.grid(row=2, column=0, columnspan=9, padx=5, pady=2, sticky=tk.W)
 
@@ -6598,6 +6631,240 @@ gitee仓库地址：xxx
         ttk.Button(btn_frame, text="管理配置", command=self.manage_config).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text="保存配置", command=self.save_config).pack(side=tk.RIGHT, padx=5)
 
+    # ------------------ 高级设置 ------------------
+    def _setup_advanced_tab(self):
+        """设置高级配置选项卡（监控速度等）"""
+        main_frame = ttk.Frame(self.advanced_tab)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # 说明文字
+        ttk.Label(
+            main_frame,
+            text="慢速查询直播状态档位（1档为原始速度，档位越高，查询间隔越长、越省资源）。",
+            anchor=tk.W
+        ).pack(fill=tk.X, pady=(0, 10))
+
+        # 档位选择
+        level_frame = ttk.LabelFrame(main_frame, text="监控速度档位")
+        level_frame.pack(fill=tk.X, pady=5)
+
+        ttk.Label(level_frame, text="请选择监控速度档位：").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+
+        # 使用单选按钮提供 1~5 档可选
+        for i in range(1, 6):
+            text = self.monitor_speed_desc.get(i, f"{i}档")
+            ttk.Radiobutton(
+                level_frame,
+                text=text,
+                value=i,
+                variable=self.monitor_speed_level,
+                command=self._update_monitor_speed_preview
+            ).grid(row=0, column=i, padx=5, pady=5, sticky=tk.W)
+
+        # 当前启用监控的主播数量展示
+        self.monitor_speed_count_label = ttk.Label(level_frame, text="")
+        self.monitor_speed_count_label.grid(row=1, column=0, columnspan=6, padx=5, pady=(0, 5), sticky=tk.W)
+
+        # 各档位 every_sleep / total_cycle 预览
+        preview_frame = ttk.LabelFrame(main_frame, text="各档位实际时间说明（仅供参考，估算的时间不准确）")
+        preview_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Label(
+            preview_frame,
+            textvariable=self.monitor_speed_every_preview,
+            anchor=tk.W,
+            justify=tk.LEFT
+        ).pack(fill=tk.X, padx=5, pady=3)
+
+        ttk.Label(
+            preview_frame,
+            textvariable=self.monitor_speed_cycle_preview,
+            anchor=tk.W,
+            justify=tk.LEFT
+        ).pack(fill=tk.X, padx=5, pady=3)
+
+        # 初始化预览内容
+        self._update_monitor_speed_preview()
+        
+        # 添加勿扰/休眠时段和定时调速按钮
+        advanced_settings_frame = ttk.LabelFrame(main_frame, text="高级功能设置")
+        advanced_settings_frame.pack(fill=tk.X, pady=10)
+        
+        btn_frame = ttk.Frame(advanced_settings_frame)
+        btn_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        ttk.Button(
+            btn_frame,
+            text="勿扰/休眠时段设置",
+            command=self.open_quiet_periods_window
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            btn_frame,
+            text="定时调速设置",
+            command=self.open_scheduled_speed_window
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(
+            btn_frame,
+            text="用户环境变量检测",
+            command=self.open_environment_detector
+        ).pack(side=tk.LEFT, padx=5)
+
+    def _compute_monitor_timings(self, stream_count: int, level: int = None):
+        """
+        根据启用监控的主播数量和监控速度档位，计算：
+        - every_sleep：单个主播之间的查询间隔（秒）
+        - total_cycle：完成一轮所有主播检查后额外休眠的总时长（秒）
+
+        1档为原始速度，档位越高越慢、越省资源。
+        """
+        # 兜底处理
+        if stream_count <= 0:
+            # 没有主播时给一个保守的默认值，避免除零或过快循环
+            return 1.5, 10.0
+
+        if level is None:
+            try:
+                level = int(self.monitor_speed_level.get() or 1)
+            except Exception:
+                level = 1
+
+        # 限制档位范围到 1~5
+        level = max(1, min(5, level))
+
+        # 以 1 档为基准：主播越多，每个主播之间的休眠稍微缩短一点，
+        # 但仍保持在 1.0 秒以上，避免请求过于频繁
+        # 示例：1个主播≈2.5s，10个主播≈1.5s
+        max_stream_for_adjust = 10
+        base_every_sleep = max(3.5, 4 + 0.5 * min(stream_count, max_stream_for_adjust))
+
+        # 整轮休眠：和主播数量成正比，主播越多，一轮之后整体稍微多休息一段时间
+        # 保证至少 5 秒，避免 CPU 空转
+        base_total_cycle = max(5.0, stream_count * 3.0)
+
+        # 不同档位的倍率（越高越慢）
+        level_multipliers = {
+            1: 1.0,   # 原始速度
+            2: 1.5,   # 稍慢
+            3: 2.0,   # 中等慢
+            4: 3.0,   # 较慢
+            5: 4.0,   # 最慢
+        }
+        factor = level_multipliers.get(level, 1.0)
+
+        every_sleep = base_every_sleep * factor
+        total_cycle = base_total_cycle * factor /2
+        return every_sleep, total_cycle
+
+    def _update_monitor_speed_preview(self):
+        """根据当前启用的主播数量，预估各档位的 every_sleep / total_cycle 时间，并刷新界面文本。"""
+        try:
+            enabled_streamers = [s for s in self.streamers if s.get("monitor_enabled", True)]
+        except Exception:
+            enabled_streamers = []
+
+        stream_count = len(enabled_streamers)
+        # 更新当前启用主播数展示
+        if hasattr(self, "monitor_speed_count_label"):
+            self.monitor_speed_count_label.config(
+                text=f"当前启用监控的主播数量：{stream_count} 个（以此数量估算各档位时间）"
+            )
+
+        if stream_count <= 0:
+            self.monitor_speed_every_preview.set("当前没有启用监控的主播，暂无法预估各档位 every_sleep 时间。")
+            self.monitor_speed_cycle_preview.set("当前没有启用监控的主播，暂无法预估各档位 total_cycle 时间。")
+            return
+
+        every_parts = []
+        cycle_parts = []
+        for level in range(1, 6):
+            every, cycle = self._compute_monitor_timings(stream_count*2, level=level)
+            every_parts.append(f"{level}档：{every:.1f} 秒")
+            cycle_parts.append(f"{level}档：{cycle:.1f} 秒")
+
+        # 第一行：各档位 every_sleep
+        self.monitor_speed_every_preview.set(
+            "每次查询间隔 every_sleep： " + "； ".join(every_parts)
+        )
+        # 第二行：各档位 total_cycle
+        self.monitor_speed_cycle_preview.set(
+            "整轮休眠时间 total_cycle： " + "； ".join(cycle_parts)
+        )
+
+    def on_tab_changed(self, event=None):
+        """处理tab切换事件，切换到高级设置时刷新预览文本"""
+        try:
+            selected_tab = self.notebook.index(self.notebook.select())
+            tab_text = self.notebook.tab(selected_tab, "text")
+            if tab_text == "高级设置":
+                self._update_monitor_speed_preview()
+        except Exception:
+            pass  # 忽略可能的异常
+    
+    def open_quiet_periods_window(self):
+        """打开勿扰/休眠时段设置窗口"""
+        QuietPeriodsWindow(self.root, self)
+    
+    def open_scheduled_speed_window(self):
+        """打开定时调速设置窗口"""
+        ScheduledSpeedWindow(self.root, self)
+
+    def open_environment_detector(self):
+        """打开环境变量检测窗口"""
+        EnvironmentDetectorWindow(self.root)
+    
+    def _is_in_time_period(self, current_time_str, start_str, end_str):
+        """判断当前时间是否在指定时段内（支持跨天）"""
+        try:
+            # 解析时间字符串 HH:MM
+            def time_to_minutes(time_str):
+                parts = time_str.split(":")
+                return int(parts[0]) * 60 + int(parts[1])
+            
+            current_minutes = time_to_minutes(current_time_str)
+            start_minutes = time_to_minutes(start_str)
+            end_minutes = time_to_minutes(end_str)
+            
+            # 处理跨天的情况
+            if start_minutes <= end_minutes:
+                # 不跨天
+                return start_minutes <= current_minutes <= end_minutes
+            else:
+                # 跨天
+                return current_minutes >= start_minutes or current_minutes <= end_minutes
+        except Exception:
+            return False
+    
+    def is_in_do_not_disturb_period(self):
+        """判断当前是否在勿扰时段"""
+        current_time = datetime.now().strftime("%H:%M")
+        for period in self.do_not_disturb_periods:
+            if self._is_in_time_period(current_time, period["start"], period["end"]):
+                return True
+        return False
+    
+    def is_in_sleep_period(self):
+        """判断当前是否在休眠时段"""
+        current_time = datetime.now().strftime("%H:%M")
+        for period in self.sleep_periods:
+            if self._is_in_time_period(current_time, period["start"], period["end"]):
+                return True
+        return False
+    
+    def get_current_speed_level(self):
+        """获取当前应该使用的监控速度档位"""
+        current_time = datetime.now().strftime("%H:%M")
+        for period in self.scheduled_speed_periods:
+            if self._is_in_time_period(current_time, period["start"], period["end"]):
+                return period["level"]
+        # 如果不在任何定时调速时段内，返回默认档位
+        return int(self.monitor_speed_level.get() or 1)
+
+        # 当用户在界面上切换档位时，希望下一轮监控循环自动应用最新档位
+        # 这里标记更新，_monitor_loop 会在下一轮开始时重新计算
+        self.monitor_update_pending = True
+
     def _update_automation_status(self, task_id, status):
         """更新自动化任务状态显示"""
         for item in self.auto_tree.get_children():
@@ -7447,12 +7714,15 @@ gitee仓库地址：xxx
             if not suppress_empty_warning:
                 messagebox.showwarning("警告", "没有启用监控的主播，请先启用监控")
             return
-        every_sleep = 4.5 + (0.12 * stream_count)
-        squares = stream_count * 1.1
-        total_cycle = 2 + (0.12 * squares)
+        # 获取当前应该使用的速度档位（定时调速）
+        level = self.get_current_speed_level()
+        every_sleep, total_cycle = self._compute_monitor_timings(stream_count, level=level)
         refer_time = round(total_cycle + (2 * every_sleep))
         self.monitoring = True
-        self.log_message(f"监控已启动 (每间隔{refer_time}秒检查一次，监控 {stream_count} 个主播)")
+        level_desc = self.monitor_speed_desc.get(level, f"{level}档")
+        self.log_message(
+            f"监控已启动 (当前速度{level_desc}，大约每{refer_time}秒检查一次，监控 {stream_count} 个主播)"
+        )
         self.last_status = {s["name"]: s["status"] for s in enabled_streamers}
         self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self.monitor_thread.start()
@@ -7473,18 +7743,35 @@ gitee仓库地址：xxx
         # 初始化：只监控启用监控的主播
         enabled_streamers = [s for s in self.streamers if s.get("monitor_enabled", True)]
         stream_count = len(enabled_streamers)
-        every_sleep = 4.5 + (0.12 * stream_count)
-        squares = stream_count * 1.1
-        total_cycle = 2 + (0.12 * squares)
+        # 获取当前应该使用的速度档位（定时调速）
+        current_level = self.get_current_speed_level()
+        every_sleep, total_cycle = self._compute_monitor_timings(stream_count, level=current_level)
+        sleep_period_logged = False  # 用于记录是否已输出休眠日志，避免重复输出
         while self.monitoring:
+            # 检查是否在休眠时段
+            if self.is_in_sleep_period():
+                if not sleep_period_logged:
+                    self.log_message("当前处于休眠时段，暂停监控（录播任务继续运行）")
+                    sleep_period_logged = True
+                # 休眠时段：每60秒检查一次是否退出休眠
+                for _ in range(60):
+                    if not self.monitoring:
+                        break
+                    time.sleep(1)
+                continue
+            else:
+                if sleep_period_logged:
+                    self.log_message("休眠时段已结束，恢复监控")
+                    sleep_period_logged = False
+            
             # 如有监控配置变更，延迟到本轮开始时刷新队列，避免重启线程
             if getattr(self, "monitor_update_pending", False):
                 try:
                     enabled_streamers = [s for s in self.streamers if s.get("monitor_enabled", True)]
                     stream_count = len(enabled_streamers)
-                    every_sleep = 4.5 + (0.12 * stream_count)
-                    squares = max(1.0, float(stream_count) * 1.1)
-                    total_cycle = 2 + (0.12 * squares)
+                    # 重新获取当前应该使用的速度档位
+                    current_level = self.get_current_speed_level()
+                    every_sleep, total_cycle = self._compute_monitor_timings(stream_count, level=current_level)
                     # 同步 last_status 以避免 KeyError
                     self.last_status = {s["name"]: s.get("status", "未开播") for s in enabled_streamers}
                     self.log_message(f"已应用最新监控列表更新（当前监控 {stream_count} 个主播）")
@@ -7492,6 +7779,14 @@ gitee仓库地址：xxx
                     self.log_message(f"应用监控列表更新失败: {e}", "error")
                 finally:
                     self.monitor_update_pending = False
+            
+            # 每轮开始时重新检查定时调速，因为档位可能已变化
+            new_level = self.get_current_speed_level()
+            if new_level != current_level:
+                current_level = new_level
+                every_sleep, total_cycle = self._compute_monitor_timings(stream_count, level=current_level)
+                level_desc = self.monitor_speed_desc.get(current_level, f"{current_level}档")
+                self.log_message(f"定时调速已切换至 {level_desc}")
 
             for streamer in enabled_streamers:
                 try:
@@ -7624,6 +7919,12 @@ gitee仓库地址：xxx
 
     def send_notifications(self, title, content, group_name):
         """根据通知组设置发送通知，全局主开关优先"""
+        # 检查是否在勿扰时段
+        if self.is_in_do_not_disturb_period():
+            current_time = datetime.now().strftime("%H:%M")
+            self.log_message(f"当前处于勿扰时段（{current_time}），通知已屏蔽")
+            return
+        
         # 查找对应的通知组
         group = next((g for g in self.notification_groups if g["name"] == group_name), None)
         if not group:
@@ -7761,6 +8062,17 @@ gitee仓库地址：xxx
                     # 加载aria2运行方式（新增）
                     self.aria2_run_mode = cfg.get("aria2_run_mode", self.aria2_run_mode)
 
+                    # 加载监控速度档位（高级设置）
+                    try:
+                        self.monitor_speed_level.set(int(cfg.get("monitor_speed_level", 1)))
+                    except Exception:
+                        self.monitor_speed_level.set(1)
+                    
+                    # 加载勿扰/休眠时段和定时调速配置
+                    self.do_not_disturb_periods = cfg.get("do_not_disturb_periods", [])
+                    self.sleep_periods = cfg.get("sleep_periods", [])
+                    self.scheduled_speed_periods = cfg.get("scheduled_speed_periods", [])
+
                     # 加载通知组配置（兼容旧版本）
                     self.notification_groups = cfg.get("notification_groups", [])
                     self.default_notification_group = cfg.get("default_notification_group", "默认组")
@@ -7893,6 +8205,14 @@ gitee仓库地址：xxx
                 "aria2_mode_initialized": persisted.get("aria2_mode_initialized", True),
                 "detected_windows_major": persisted.get("detected_windows_major"),
                 "launch_count": getattr(self, 'launch_count', 0),
+
+                # 高级设置：监控速度档位
+                "monitor_speed_level": int(self.monitor_speed_level.get() or 1),
+                
+                # 高级设置：勿扰/休眠时段和定时调速
+                "do_not_disturb_periods": getattr(self, 'do_not_disturb_periods', []),
+                "sleep_periods": getattr(self, 'sleep_periods', []),
+                "scheduled_speed_periods": getattr(self, 'scheduled_speed_periods', []),
             }
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=2)
@@ -10965,6 +11285,1093 @@ class RecordWizardWindow:
 
         # 在后台线程中运行检测
         threading.Thread(target=run_check, daemon=True).start()
+
+
+class QuietPeriodsWindow:
+    """勿扰/休眠时段管理窗口"""
+    def __init__(self, parent, app):
+        self.parent = parent
+        self.app = app
+        self.root = tk.Toplevel(parent)
+        self.root.title("勿扰/休眠时段设置")
+        self.root.geometry("700x550")
+        self.root.transient(parent)
+        self.root.grab_set()
+        
+        # 居中显示
+        self.root.update_idletasks()
+        x = (self.root.winfo_screenwidth() // 2) - (700 // 2)
+        y = (self.root.winfo_screenheight() // 2) - (550 // 2)
+        self.root.geometry(f"700x550+{x}+{y}")
+        
+        # 创建Notebook用于切换勿扰时段和休眠时段
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # 勿扰时段tab
+        self.do_not_disturb_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.do_not_disturb_frame, text="勿扰时段")
+        self._setup_do_not_disturb_tab()
+        
+        # 休眠时段tab
+        self.sleep_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.sleep_frame, text="休眠时段")
+        self._setup_sleep_tab()
+        
+        # 底部按钮
+        btn_frame = ttk.Frame(self.root)
+        btn_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Button(btn_frame, text="保存", command=self.save_periods).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="取消", command=self.root.destroy).pack(side=tk.RIGHT, padx=5)
+    
+    def _setup_do_not_disturb_tab(self):
+        """设置勿扰时段tab"""
+        # 说明
+        info_label = ttk.Label(
+            self.do_not_disturb_frame,
+            text="勿扰时段：在此时间段内，所有通知方式都将失效，但监控和录播继续运行。",
+            anchor=tk.W,
+            foreground="gray"
+        )
+        info_label.pack(fill=tk.X, padx=10, pady=5)
+        
+        # 时段列表
+        list_frame = ttk.LabelFrame(self.do_not_disturb_frame, text="勿扰时段列表")
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        # Treeview显示时段
+        columns = ("开始时间", "结束时间")
+        self.do_not_disturb_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=12)
+        for col in columns:
+            self.do_not_disturb_tree.heading(col, text=col)
+            self.do_not_disturb_tree.column(col, width=200)
+        
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.do_not_disturb_tree.yview)
+        self.do_not_disturb_tree.configure(yscrollcommand=scrollbar.set)
+        self.do_not_disturb_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 加载现有数据
+        for period in self.app.do_not_disturb_periods:
+            self.do_not_disturb_tree.insert("", "end", values=(period["start"], period["end"]))
+        
+        # 添加/删除按钮
+        btn_frame = ttk.Frame(list_frame)
+        btn_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(btn_frame, text="添加时段", command=self.add_do_not_disturb_period).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="删除选中", command=self.delete_do_not_disturb_period).pack(side=tk.LEFT, padx=2)
+    
+    def _setup_sleep_tab(self):
+        """设置休眠时段tab"""
+        # 说明
+        info_label = ttk.Label(
+            self.sleep_frame,
+            text="休眠时段：在此时间段内，停止直播状态监控（已有的录播任务不停止）。",
+            anchor=tk.W,
+            foreground="gray"
+        )
+        info_label.pack(fill=tk.X, padx=10, pady=5)
+        
+        # 时段列表
+        list_frame = ttk.LabelFrame(self.sleep_frame, text="休眠时段列表")
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        # Treeview显示时段
+        columns = ("开始时间", "结束时间")
+        self.sleep_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=12)
+        for col in columns:
+            self.sleep_tree.heading(col, text=col)
+            self.sleep_tree.column(col, width=200)
+        
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.sleep_tree.yview)
+        self.sleep_tree.configure(yscrollcommand=scrollbar.set)
+        self.sleep_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 加载现有数据
+        for period in self.app.sleep_periods:
+            self.sleep_tree.insert("", "end", values=(period["start"], period["end"]))
+        
+        # 添加/删除按钮
+        btn_frame = ttk.Frame(list_frame)
+        btn_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(btn_frame, text="添加时段", command=self.add_sleep_period).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="删除选中", command=self.delete_sleep_period).pack(side=tk.LEFT, padx=2)
+    
+    def _show_time_input_dialog(self, title):
+        """显示时间输入对话框"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.geometry("350x150")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # 居中
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (350 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (150 // 2)
+        dialog.geometry(f"350x150+{x}+{y}")
+        
+        result = {"start": "", "end": "", "ok": False}
+        
+        ttk.Label(dialog, text="开始时间 (HH:MM):").grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+        start_entry = ttk.Entry(dialog, width=15)
+        start_entry.grid(row=0, column=1, padx=10, pady=10)
+        
+        ttk.Label(dialog, text="结束时间 (HH:MM):").grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
+        end_entry = ttk.Entry(dialog, width=15)
+        end_entry.grid(row=1, column=1, padx=10, pady=10)
+        
+        def validate_and_close():
+            start = start_entry.get().strip()
+            end = end_entry.get().strip()
+            
+            # 验证时间格式
+            if not re.match(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$', start):
+                messagebox.showerror("错误", "开始时间格式错误，请使用 HH:MM 格式（24小时制）")
+                return
+            
+            if not re.match(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$', end):
+                messagebox.showerror("错误", "结束时间格式错误，请使用 HH:MM 格式（24小时制）")
+                return
+            
+            result["start"] = start
+            result["end"] = end
+            result["ok"] = True
+            dialog.destroy()
+        
+        btn_frame = ttk.Frame(dialog)
+        btn_frame.grid(row=2, column=0, columnspan=2, pady=10)
+        
+        ttk.Button(btn_frame, text="确定", command=validate_and_close).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="取消", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+        
+        dialog.wait_window()
+        return result
+    
+    def add_do_not_disturb_period(self):
+        """添加勿扰时段"""
+        result = self._show_time_input_dialog("添加勿扰时段")
+        if result["ok"]:
+            self.do_not_disturb_tree.insert("", "end", values=(result["start"], result["end"]))
+    
+    def delete_do_not_disturb_period(self):
+        """删除选中的勿扰时段"""
+        selected = self.do_not_disturb_tree.selection()
+        if not selected:
+            messagebox.showwarning("警告", "请先选择要删除的时段")
+            return
+        for item in selected:
+            self.do_not_disturb_tree.delete(item)
+    
+    def add_sleep_period(self):
+        """添加休眠时段"""
+        result = self._show_time_input_dialog("添加休眠时段")
+        if result["ok"]:
+            self.sleep_tree.insert("", "end", values=(result["start"], result["end"]))
+    
+    def delete_sleep_period(self):
+        """删除选中的休眠时段"""
+        selected = self.sleep_tree.selection()
+        if not selected:
+            messagebox.showwarning("警告", "请先选择要删除的时段")
+            return
+        for item in selected:
+            self.sleep_tree.delete(item)
+    
+    def save_periods(self):
+        """保存时段配置"""
+        # 保存勿扰时段
+        self.app.do_not_disturb_periods = []
+        for item in self.do_not_disturb_tree.get_children():
+            values = self.do_not_disturb_tree.item(item, "values")
+            self.app.do_not_disturb_periods.append({"start": values[0], "end": values[1]})
+        
+        # 保存休眠时段
+        self.app.sleep_periods = []
+        for item in self.sleep_tree.get_children():
+            values = self.sleep_tree.item(item, "values")
+            self.app.sleep_periods.append({"start": values[0], "end": values[1]})
+        
+        # 保存配置到文件
+        if self.app.save_config():
+            self.app.log_message("勿扰/休眠时段配置已保存")
+            messagebox.showinfo("成功", "时段配置已保存")
+            self.root.destroy()
+        else:
+            messagebox.showerror("错误", "保存配置失败")
+
+
+class ScheduledSpeedWindow:
+    """定时调速管理窗口"""
+    def __init__(self, parent, app):
+        self.parent = parent
+        self.app = app
+        self.root = tk.Toplevel(parent)
+        self.root.title("定时调速设置")
+        self.root.geometry("700x550")
+        self.root.transient(parent)
+        self.root.grab_set()
+        
+        # 居中显示
+        self.root.update_idletasks()
+        x = (self.root.winfo_screenwidth() // 2) - (700 // 2)
+        y = (self.root.winfo_screenheight() // 2) - (550 // 2)
+        self.root.geometry(f"800x550+{x}+{y}")
+        
+        # 说明
+        info_label = ttk.Label(
+            self.root,
+            text="定时调速：在不同时段应用不同的监控速度档位。时段外使用默认档位。",
+            anchor=tk.W,
+            foreground="gray"
+        )
+        info_label.pack(fill=tk.X, padx=10, pady=5)
+        
+        # 时段列表
+        list_frame = ttk.LabelFrame(self.root, text="定时调速时段列表")
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        # Treeview显示时段
+        columns = ("开始时间", "结束时间", "速度档位")
+        self.speed_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=15)
+        for col in columns:
+            self.speed_tree.heading(col, text=col)
+            self.speed_tree.column(col, width=180)
+        
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.speed_tree.yview)
+        self.speed_tree.configure(yscrollcommand=scrollbar.set)
+        self.speed_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 加载现有数据
+        for period in self.app.scheduled_speed_periods:
+            self.speed_tree.insert("", "end", values=(period["start"], period["end"], f"{period['level']}档"))
+        
+        # 添加/删除按钮
+        btn_frame = ttk.Frame(list_frame)
+        btn_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(btn_frame, text="添加时段", command=self.add_speed_period).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="删除选中", command=self.delete_speed_period).pack(side=tk.LEFT, padx=2)
+        
+        # 底部按钮
+        bottom_btn_frame = ttk.Frame(self.root)
+        bottom_btn_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Button(bottom_btn_frame, text="保存", command=self.save_periods).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(bottom_btn_frame, text="取消", command=self.root.destroy).pack(side=tk.RIGHT, padx=5)
+    
+    def _show_speed_input_dialog(self):
+        """显示定时调速输入对话框"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("添加定时调速时段")
+        dialog.geometry("350x200")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # 居中
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (350 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (200 // 2)
+        dialog.geometry(f"350x200+{x}+{y}")
+        
+        result = {"start": "", "end": "", "level": 1, "ok": False}
+        
+        ttk.Label(dialog, text="开始时间 (HH:MM):").grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+        start_entry = ttk.Entry(dialog, width=15)
+        start_entry.grid(row=0, column=1, padx=10, pady=10)
+        
+        ttk.Label(dialog, text="结束时间 (HH:MM):").grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
+        end_entry = ttk.Entry(dialog, width=15)
+        end_entry.grid(row=1, column=1, padx=10, pady=10)
+        
+        ttk.Label(dialog, text="速度档位:").grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
+        level_var = tk.IntVar(value=1)
+        level_frame = ttk.Frame(dialog)
+        level_frame.grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
+        
+        for i in range(1, 6):
+            ttk.Radiobutton(
+                level_frame,
+                text=f"{i}档",
+                value=i,
+                variable=level_var
+            ).pack(side=tk.LEFT, padx=2)
+        
+        def validate_and_close():
+            start = start_entry.get().strip()
+            end = end_entry.get().strip()
+            level = level_var.get()
+            
+            # 验证时间格式
+            if not re.match(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$', start):
+                messagebox.showerror("错误", "开始时间格式错误，请使用 HH:MM 格式（24小时制）")
+                return
+            
+            if not re.match(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$', end):
+                messagebox.showerror("错误", "结束时间格式错误，请使用 HH:MM 格式（24小时制）")
+                return
+            
+            result["start"] = start
+            result["end"] = end
+            result["level"] = level
+            result["ok"] = True
+            dialog.destroy()
+        
+        btn_frame = ttk.Frame(dialog)
+        btn_frame.grid(row=3, column=0, columnspan=2, pady=10)
+        
+        ttk.Button(btn_frame, text="确定", command=validate_and_close).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="取消", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+        
+        dialog.wait_window()
+        return result
+    
+    def add_speed_period(self):
+        """添加定时调速时段"""
+        result = self._show_speed_input_dialog()
+        if result["ok"]:
+            self.speed_tree.insert("", "end", values=(result["start"], result["end"], f"{result['level']}档"))
+    
+    def delete_speed_period(self):
+        """删除选中的定时调速时段"""
+        selected = self.speed_tree.selection()
+        if not selected:
+            messagebox.showwarning("警告", "请先选择要删除的时段")
+            return
+        for item in selected:
+            self.speed_tree.delete(item)
+    
+    def save_periods(self):
+        """保存定时调速配置"""
+        self.app.scheduled_speed_periods = []
+        for item in self.speed_tree.get_children():
+            values = self.speed_tree.item(item, "values")
+            # 提取档位数字
+            level_str = values[2].replace("档", "")
+            try:
+                level = int(level_str)
+            except:
+                level = 1
+            self.app.scheduled_speed_periods.append({
+                "start": values[0],
+                "end": values[1],
+                "level": level
+            })
+        
+        # 保存配置到文件
+        if self.app.save_config():
+            self.app.log_message("定时调速配置已保存")
+            messagebox.showinfo("成功", "定时调速配置已保存")
+            self.root.destroy()
+        else:
+            messagebox.showerror("错误", "保存配置失败")
+
+
+class EnvironmentDetectorWindow:
+    """环境变量检测窗口"""
+    def __init__(self, parent):
+        self.parent = parent
+        self.root = tk.Toplevel(parent)
+        self.root.title("用户环境变量检测")
+        self.root.geometry("800x600")
+        self.root.transient(parent)
+        self.root.grab_set()
+
+        # 居中显示
+        self.root.update_idletasks()
+        x = (self.root.winfo_screenwidth() // 2) - (800 // 2)
+        y = (self.root.winfo_screenheight() // 2) - (600 // 2)
+        self.root.geometry(f"800x600+{x}+{y}")
+
+        # 创建Notebook用于切换不同功能
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # 创建三个tab
+        self.user_path_tab = ttk.Frame(self.notebook)
+        self.system_path_tab = ttk.Frame(self.notebook)
+        self.help_tab = ttk.Frame(self.notebook)
+
+        self.notebook.add(self.user_path_tab, text="用户变量PATH检测")
+        self.notebook.add(self.system_path_tab, text="系统变量PATH检测")
+        self.notebook.add(self.help_tab, text="用户变量设置方法")
+
+        # 初始化各个tab
+        self.setup_user_path_tab()
+        self.setup_system_path_tab()
+        self.setup_help_tab()
+
+    def setup_user_path_tab(self):
+        """设置用户变量PATH检测tab"""
+        # 标题
+        title_label = ttk.Label(self.user_path_tab, text="用户环境变量 PATH 中 msedgedriver.exe 检测",
+                               font=("Arial", 14, "bold"))
+        title_label.pack(pady=10)
+
+        # 创建滚动框架
+        scroll_frame = ttk.Frame(self.user_path_tab)
+        scroll_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        # 创建画布和滚动条
+        canvas = tk.Canvas(scroll_frame, height=400)
+        scrollbar = ttk.Scrollbar(scroll_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # 检测按钮
+        detect_btn = ttk.Button(scrollable_frame, text="开始检测",
+                               command=lambda: self.detect_msedgedriver(scrollable_frame, "user"))
+        detect_btn.pack(pady=10)
+
+        # 结果显示区域
+        self.user_result_frame = ttk.Frame(scrollable_frame)
+        self.user_result_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+
+        # 版本信息显示区域
+        self.user_version_frame = ttk.LabelFrame(scrollable_frame, text="版本信息")
+        self.user_version_frame.pack(fill=tk.X, pady=10)
+
+        # Edge浏览器版本
+        edge_version_frame = ttk.Frame(self.user_version_frame)
+        edge_version_frame.pack(fill=tk.X, padx=10, pady=5)
+        ttk.Label(edge_version_frame, text="Edge浏览器版本:", font=("Arial", 9)).pack(side=tk.LEFT)
+        self.user_edge_version_label = ttk.Label(edge_version_frame, text="检测中...", font=("Consolas", 9))
+        self.user_edge_version_label.pack(side=tk.LEFT, padx=10)
+
+        # 当前msedgedriver版本
+        current_driver_frame = ttk.Frame(self.user_version_frame)
+        current_driver_frame.pack(fill=tk.X, padx=10, pady=5)
+        ttk.Label(current_driver_frame, text="当前msedgedriver版本:", font=("Arial", 9)).pack(side=tk.LEFT)
+        self.user_current_driver_label = ttk.Label(current_driver_frame, text="检测中...", font=("Consolas", 9))
+        self.user_current_driver_label.pack(side=tk.LEFT, padx=10)
+
+        # 工作目录msedgedriver版本
+        work_dir_driver_frame = ttk.Frame(self.user_version_frame)
+        work_dir_driver_frame.pack(fill=tk.X, padx=10, pady=5)
+        ttk.Label(work_dir_driver_frame, text="工作目录msedgedriver版本:", font=("Arial", 9)).pack(side=tk.LEFT)
+        self.user_work_dir_driver_label = ttk.Label(work_dir_driver_frame, text="检测中...", font=("Consolas", 9))
+        self.user_work_dir_driver_label.pack(side=tk.LEFT, padx=10)
+
+        # 一键替换按钮
+        replace_btn = ttk.Button(scrollable_frame, text="一键替换",
+                                command=lambda: self.replace_all_msedgedriver("user"))
+        replace_btn.pack(pady=10)
+
+    def setup_system_path_tab(self):
+        """设置系统变量PATH检测tab"""
+        # 标题
+        title_label = ttk.Label(self.system_path_tab, text="系统环境变量 PATH 中 msedgedriver.exe 检测",
+                               font=("Arial", 14, "bold"))
+        title_label.pack(pady=10)
+
+        # 权限提示
+        warning_label = ttk.Label(self.system_path_tab,
+                                 text="⚠️ 注意：系统变量检测需要程序以管理员身份运行",
+                                 foreground="red", font=("Arial", 10, "bold"))
+        warning_label.pack(pady=5)
+
+        # 创建滚动框架
+        scroll_frame = ttk.Frame(self.system_path_tab)
+        scroll_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        # 创建画布和滚动条
+        canvas = tk.Canvas(scroll_frame, height=400)
+        scrollbar = ttk.Scrollbar(scroll_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # 检测按钮
+        detect_btn = ttk.Button(scrollable_frame, text="开始检测",
+                               command=lambda: self.detect_msedgedriver(scrollable_frame, "system"))
+        detect_btn.pack(pady=10)
+
+        # 结果显示区域
+        self.system_result_frame = ttk.Frame(scrollable_frame)
+        self.system_result_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+
+        # 版本信息显示区域
+        self.system_version_frame = ttk.LabelFrame(scrollable_frame, text="版本信息")
+        self.system_version_frame.pack(fill=tk.X, pady=10)
+
+        # Edge浏览器版本
+        edge_version_frame = ttk.Frame(self.system_version_frame)
+        edge_version_frame.pack(fill=tk.X, padx=10, pady=5)
+        ttk.Label(edge_version_frame, text="Edge浏览器版本:").pack(side=tk.LEFT)
+        self.system_edge_version_label = ttk.Label(edge_version_frame, text="检测中...")
+        self.system_edge_version_label.pack(side=tk.LEFT, padx=10)
+
+        # 当前msedgedriver版本
+        current_driver_frame = ttk.Frame(self.system_version_frame)
+        current_driver_frame.pack(fill=tk.X, padx=10, pady=5)
+        ttk.Label(current_driver_frame, text="当前msedgedriver版本:").pack(side=tk.LEFT)
+        self.system_current_driver_label = ttk.Label(current_driver_frame, text="检测中...")
+        self.system_current_driver_label.pack(side=tk.LEFT, padx=10)
+
+        # 工作目录msedgedriver版本
+        work_dir_driver_frame = ttk.Frame(self.system_version_frame)
+        work_dir_driver_frame.pack(fill=tk.X, padx=10, pady=5)
+        ttk.Label(work_dir_driver_frame, text="工作目录msedgedriver版本:").pack(side=tk.LEFT)
+        self.system_work_dir_driver_label = ttk.Label(work_dir_driver_frame, text="检测中...")
+        self.system_work_dir_driver_label.pack(side=tk.LEFT, padx=10)
+
+        # 一键替换按钮
+        replace_btn = ttk.Button(scrollable_frame, text="一键替换",
+                                command=lambda: self.replace_all_msedgedriver("system"))
+        replace_btn.pack(pady=10)
+
+    def setup_help_tab(self):
+        """设置系统变量设置方法tab"""
+        # 创建滚动框架
+        scroll_frame = ttk.Frame(self.help_tab)
+        scroll_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # 创建画布和滚动条
+        canvas = tk.Canvas(scroll_frame, height=500)
+        scrollbar = ttk.Scrollbar(scroll_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # 标题
+        title_label = ttk.Label(scrollable_frame, text="用户变量设置方法",
+                               font=("Arial", 16, "bold"))
+        title_label.pack(pady=15)
+
+        # 设置方法内容
+        help_text = """
+Windows 用户变量 PATH 设置方法：
+
+方法一：通过系统属性设置（推荐）
+1. 右键点击"此电脑" → "属性"
+(或者点击工作目录下的“高级系统设置”快捷方式，跳到第3步)
+2. 点击"高级系统设置"
+3. 在"系统属性"窗口中点击"环境变量"按钮
+4. 在"xxx的用户变量"部分找到"Path"变量
+5. 点击"编辑"按钮
+6. 在编辑窗口中点击"新建"
+7. 添加 msedgedriver.exe 所在的文件夹路径
+8. 点击"确定"保存所有设置
+
+方法二：通过命令提示符设置（临时）
+1. 以管理员身份打开命令提示符
+2. 执行命令：setx /M PATH "%PATH%;C:\\path\\to\\msedgedriver"
+   （将 C:\\path\\to\\msedgedriver 替换为实际路径）
+
+方法三：通过 PowerShell 设置（临时）
+1. 以管理员身份打开 PowerShell
+2. 执行命令：$env:PATH += ";C:\\path\\to\\msedgedriver"
+   （将 C:\\path\\to\\msedgedriver 替换为实际路径）
+
+注意事项：
+• 修改系统环境变量需要管理员权限
+• 设置后需要重启应用程序或重新打开命令提示符才能生效
+• 建议将 msedgedriver.exe 放在固定的目录中，避免频繁修改 PATH
+• 可以将多个版本的 msedgedriver 放在不同目录，通过 PATH 顺序控制优先级
+
+验证设置是否成功：
+在命令提示符中输入：where msedgedriver
+如果显示路径，则设置成功。
+        """
+
+        help_label = ttk.Label(scrollable_frame, text=help_text,
+                              justify=tk.LEFT, font=("Consolas", 10))
+        help_label.pack(anchor=tk.W, pady=10)
+
+    def detect_msedgedriver(self, parent_frame, path_type):
+        """检测 msedgedriver.exe"""
+        import os
+        import subprocess
+
+        # 清空之前的结果
+        for widget in parent_frame.winfo_children():
+            if widget != self.user_result_frame and widget != self.system_result_frame:
+                continue
+            for child in widget.winfo_children():
+                child.destroy()
+
+        result_frame = self.user_result_frame if path_type == "user" else self.system_result_frame
+
+        try:
+            # 获取PATH
+            if path_type == "user":
+                path_env = os.environ.get('PATH', '')
+            else:
+                # 系统变量需要通过注册表或其他方式获取
+                try:
+                    import winreg
+                    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                       r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
+                    path_env, _ = winreg.QueryValueEx(key, "PATH")
+                    winreg.CloseKey(key)
+                except Exception as e:
+                    ttk.Label(result_frame,
+                             text=f"读取系统环境变量失败：{str(e)}\n请确保程序以管理员身份运行。",
+                             foreground="red").pack(pady=10)
+                    return
+
+            if not path_env:
+                ttk.Label(result_frame, text="未找到 PATH 环境变量").pack(pady=10)
+                return
+
+            # 分割PATH
+            paths = path_env.split(';')
+            msedgedriver_paths = []
+
+            # 遍历所有路径查找msedgedriver.exe
+            for path in paths:
+                path = path.strip()
+                if not path:
+                    continue
+
+                msedgedriver_path = os.path.join(path, 'msedgedriver.exe')
+                if os.path.exists(msedgedriver_path):
+                    try:
+                        # 获取版本信息
+                        version = self.get_msedgedriver_version(msedgedriver_path)
+                        msedgedriver_paths.append((msedgedriver_path, version))
+                    except Exception as e:
+                        msedgedriver_paths.append((msedgedriver_path, f"版本读取失败: {str(e)}"))
+
+            # 显示结果
+            if msedgedriver_paths:
+                ttk.Label(result_frame, text=f"找到 {len(msedgedriver_paths)} 个 msedgedriver.exe：",
+                         font=("Arial", 10, "bold")).pack(pady=10)
+
+                # 创建结果显示区域
+                result_text = tk.Text(result_frame, height=15, wrap=tk.WORD, font=("Consolas", 9))
+                scrollbar = ttk.Scrollbar(result_frame, command=result_text.yview)
+                result_text.config(yscrollcommand=scrollbar.set)
+
+                result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+                scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+                # 获取当前使用的msedgedriver路径
+                current_path = self.get_current_msedgedriver_path()
+
+                for i, (path, version) in enumerate(msedgedriver_paths, 1):
+                    marker = " ← 当前使用" if path == current_path else ""
+                    # 确保路径字符串是正确的Unicode格式
+                    safe_path = str(path).encode('utf-8', errors='replace').decode('utf-8')
+                    safe_version = str(version).encode('utf-8', errors='replace').decode('utf-8')
+                    result_text.insert(tk.END, f"{i}. 路径: {safe_path}\n")
+                    result_text.insert(tk.END, f"   版本: {safe_version}{marker}\n\n")
+
+                result_text.config(state=tk.DISABLED)
+
+                # 显示当前使用的路径信息
+                if current_path:
+                    # 确保路径字符串是正确的Unicode格式
+                    safe_current_path = str(current_path).encode('utf-8', errors='replace').decode('utf-8')
+                    current_label = ttk.Label(result_frame,
+                                            text=f"当前使用的 msedgedriver.exe 路径：\n{safe_current_path}",
+                                            foreground="blue",
+                                            font=("Arial", 9, "bold"))
+                    current_label.pack(pady=10)
+                else:
+                    ttk.Label(result_frame,
+                             text="无法确定当前使用的 msedgedriver.exe 路径",
+                             foreground="orange").pack(pady=10)
+            else:
+                ttk.Label(result_frame, text="在 PATH 中未找到 msedgedriver.exe").pack(pady=10)
+
+        except Exception as e:
+            ttk.Label(result_frame,
+                     text=f"检测过程中发生错误：{str(e)}",
+                     foreground="red").pack(pady=10)
+
+        # 更新版本信息显示
+        self.update_version_info(path_type)
+
+    def get_msedgedriver_version(self, path):
+        """获取 msedgedriver.exe 的版本信息"""
+        try:
+            import subprocess
+            import locale
+
+            # 确保路径格式正确，处理中文路径
+            if not os.path.exists(path):
+                return "文件不存在"
+
+            # 使用文件版本信息获取版本号，尝试多种编码方式
+            encodings_to_try = ['cp1252', 'gbk', 'utf-8', locale.getpreferredencoding()]
+
+            for encoding in encodings_to_try:
+                try:
+                    # 使用双引号包围路径以处理包含空格或中文的路径
+                    cmd = f'(Get-Item "{path}").VersionInfo.FileVersion'
+                    result = subprocess.run(['powershell', cmd],
+                                          capture_output=True, text=True, encoding=encoding, errors='ignore')
+                    if result.returncode == 0 and result.stdout.strip():
+                        version = result.stdout.strip()
+                        if version and not version.startswith("版本获取失败"):
+                            return version
+                except (UnicodeDecodeError, OSError):
+                    continue
+
+            # 如果上面的方法失败，尝试其他方法（直接运行msedgedriver --version）
+            for encoding in encodings_to_try:
+                try:
+                    result = subprocess.run([path, '--version'],
+                                          capture_output=True, text=True, encoding=encoding, errors='ignore')
+                    if result.returncode == 0:
+                        version_line = result.stdout.strip().split('\n')[0]
+                        # 提取版本号
+                        import re
+                        version_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', version_line)
+                        if version_match:
+                            return version_match.group(1)
+                        return version_line
+                except (UnicodeDecodeError, OSError):
+                    continue
+
+            return "未知版本"
+        except Exception as e:
+            return f"版本获取失败: {str(e)}"
+
+    def get_current_msedgedriver_path(self):
+        """获取当前使用的 msedgedriver.exe 路径"""
+        try:
+            import subprocess
+            import locale
+
+            # 尝试多种编码方式来正确处理中文路径
+            encodings_to_try = ['cp1252', 'gbk', 'utf-8', locale.getpreferredencoding()]
+
+            for encoding in encodings_to_try:
+                try:
+                    result = subprocess.run(['where', 'msedgedriver'],
+                                          capture_output=True, text=True, encoding=encoding, errors='ignore')
+                    if result.returncode == 0 and result.stdout.strip():
+                        # 返回第一个找到的路径
+                        path = result.stdout.strip().split('\n')[0].strip()
+                        # 验证路径是否存在，如果存在说明编码正确
+                        if os.path.exists(path):
+                            # 确保返回正确的Unicode字符串
+                            try:
+                                return path.encode('utf-8', errors='replace').decode('utf-8')
+                            except:
+                                return path
+                except (UnicodeDecodeError, OSError):
+                    continue
+
+            # 如果上面的方法都失败了，尝试不指定编码
+            try:
+                result = subprocess.run(['where', 'msedgedriver'],
+                                      capture_output=True, text=True)
+                if result.returncode == 0 and result.stdout.strip():
+                    path = result.stdout.strip().split('\n')[0].strip()
+                    if os.path.exists(path):
+                        # 确保返回正确的Unicode字符串
+                        try:
+                            return path.encode('utf-8', errors='replace').decode('utf-8')
+                        except:
+                            return path
+            except Exception:
+                pass
+
+        except Exception:
+            pass
+        return None
+
+    def get_working_dir_msedgedriver_path(self):
+        """获取工作目录的msedgedriver.exe路径"""
+        try:
+            import os
+            # 使用统一的应用程序目录获取函数
+            script_dir = get_app_directory()
+            driver_path = os.path.join(script_dir, 'msedgedriver.exe')
+            if os.path.exists(driver_path):
+                return driver_path
+        except Exception:
+            pass
+        return None
+
+    def get_working_dir_msedgedriver_version(self):
+        """获取工作目录msedgedriver.exe的版本"""
+        # 使用detect_msedgedriver函数的逻辑来检测工作目录的msedgedriver
+        try:
+            import os
+            # 使用统一的应用程序目录获取函数
+            script_dir = get_app_directory()
+            driver_path = os.path.join(script_dir, 'msedgedriver.exe')
+
+            if os.path.exists(driver_path):
+                # 使用detect_msedgedriver函数的逻辑获取版本
+                version = self.get_msedgedriver_version(driver_path)
+                return version
+            else:
+                return "未找到"
+        except Exception as e:
+            return f"检测失败: {str(e)}"
+
+    def update_version_info(self, path_type):
+        """更新版本信息显示"""
+        edge_version = self.get_edge_version()
+        current_driver_version = self.get_msedgedriver_version(self.get_current_msedgedriver_path())
+        work_dir_driver_version = self.get_working_dir_msedgedriver_version()
+
+        # 确保版本信息是正确的Unicode格式
+        safe_edge_version = str(edge_version).encode('utf-8', errors='replace').decode('utf-8') if edge_version else "无法获取"
+        safe_current_version = str(current_driver_version).encode('utf-8', errors='replace').decode('utf-8') if current_driver_version else "无法获取"
+        safe_work_dir_version = str(work_dir_driver_version).encode('utf-8', errors='replace').decode('utf-8') if work_dir_driver_version else "未找到"
+
+        if path_type == "user":
+            self.user_edge_version_label.config(text=safe_edge_version)
+            self.user_current_driver_label.config(text=safe_current_version)
+            self.user_work_dir_driver_label.config(text=safe_work_dir_version)
+        elif path_type == "system":
+            self.system_edge_version_label.config(text=safe_edge_version)
+            self.system_current_driver_label.config(text=safe_current_version)
+            self.system_work_dir_driver_label.config(text=safe_work_dir_version)
+
+    def get_edge_version(self):
+        """获取Edge浏览器版本"""
+        try:
+            import subprocess
+            import re
+            import winreg
+
+            # 方法1: 通过注册表获取完整版本 (HKEY_CURRENT_USER)
+            try:
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                    r"Software\Microsoft\Edge\BLBeacon")
+                version_value, _ = winreg.QueryValueEx(key, "version")
+                winreg.CloseKey(key)
+                if version_value:
+                    return version_value
+            except:
+                pass
+
+            # 方法2: 通过注册表获取完整版本 (HKEY_LOCAL_MACHINE)
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                    r"SOFTWARE\Microsoft\Edge\BLBeacon")
+                version_value, _ = winreg.QueryValueEx(key, "version")
+                winreg.CloseKey(key)
+                if version_value:
+                    return version_value
+            except:
+                pass
+
+            # 方法3: 通过程序文件路径获取版本
+            try:
+                # 尝试通过注册表获取Edge安装路径
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                    r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe")
+                edge_path, _ = winreg.QueryValueEx(key, None)
+                winreg.CloseKey(key)
+                if edge_path and os.path.exists(edge_path):
+                    version = self.get_file_version(edge_path)
+                    if version:
+                        return version
+            except:
+                pass
+
+            # 方法4: 尝试通过命令行获取完整版本
+            try:
+                result = subprocess.run(["msedge", "--version"],
+                                       capture_output=True, text=True,
+                                       encoding='cp1252', errors='ignore', timeout=5)
+                if result.returncode == 0:
+                    match = re.search(r"(\d+\.\d+\.\d+\.\d+)", result.stdout)
+                    if match:
+                        return match.group(1)
+            except:
+                pass
+
+            # 方法5: 通过PowerShell获取
+            try:
+                result = subprocess.run(['powershell',
+                                        '(Get-ItemProperty "HKLM:\\SOFTWARE\\Microsoft\\Edge\\BLBeacon").version'],
+                                       capture_output=True, text=True,
+                                       encoding='cp1252', errors='ignore', timeout=5)
+                if result.returncode == 0 and result.stdout.strip():
+                    return result.stdout.strip()
+            except:
+                pass
+
+            # 方法6: 检查Edge安装目录并获取文件版本
+            try:
+                edge_paths = [
+                    os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
+                    os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
+                    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
+                ]
+
+                for edge_path in edge_paths:
+                    if os.path.exists(edge_path):
+                        version = self.get_file_version(edge_path)
+                        if version:
+                            return version
+            except:
+                pass
+
+        except Exception:
+            pass
+        return "无法获取"
+
+    def get_file_version(self, file_path):
+        """获取文件的完整版本信息"""
+        try:
+            # 优先使用wmic方式，因为更可靠
+            info = subprocess.run(['wmic', 'datafile', 'where', f'name="{file_path}"', 'get', 'Version'],
+                                  capture_output=True, text=True, encoding='cp1252', errors='ignore', timeout=10)
+            lines = info.stdout.strip().split('\n')
+            if len(lines) > 1:
+                version = lines[1].strip()
+                if version:
+                    return version
+        except:
+            pass
+
+        # 备用方法：使用PowerShell
+        try:
+            result = subprocess.run(['powershell', f'(Get-Item "{file_path}").VersionInfo.FileVersion'],
+                                  capture_output=True, text=True, encoding='cp1252', errors='ignore', timeout=10)
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except:
+            pass
+
+        return None
+
+    def replace_all_msedgedriver(self, path_type):
+        """一键替换所有PATH中的msedgedriver.exe为工作目录的版本"""
+        try:
+            import os
+            import shutil
+            import subprocess
+
+            # 获取工作目录的msedgedriver.exe路径
+            working_dir_driver = self.get_working_dir_msedgedriver_path()
+            if not working_dir_driver:
+                messagebox.showerror("错误", "工作目录中未找到msedgedriver.exe")
+                return
+
+            # 获取工作目录msedgedriver的版本
+            working_version = self.get_msedgedriver_version(working_dir_driver)
+
+            # 获取PATH中的所有msedgedriver.exe
+            try:
+                if path_type == "user":
+                    path_env = os.environ.get('PATH', '')
+                else:
+                    # 系统变量需要通过注册表或其他方式获取
+                    import winreg
+                    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                       r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
+                    path_env, _ = winreg.QueryValueEx(key, "PATH")
+                    winreg.CloseKey(key)
+            except Exception as e:
+                messagebox.showerror("错误", f"读取{path_type}环境变量失败：{str(e)}")
+                return
+
+            if not path_env:
+                messagebox.showerror("错误", f"未找到{path_type} PATH环境变量")
+                return
+
+            # 分割PATH并查找msedgedriver.exe
+            paths = path_env.split(';')
+            msedgedriver_paths = []
+
+            for path in paths:
+                path = path.strip()
+                if not path:
+                    continue
+                msedgedriver_path = os.path.join(path, 'msedgedriver.exe')
+                if os.path.exists(msedgedriver_path):
+                    msedgedriver_paths.append(msedgedriver_path)
+
+            if not msedgedriver_paths:
+                messagebox.showinfo("信息", f"在{path_type} PATH中未找到msedgedriver.exe")
+                return
+
+            # 显示确认对话框
+            paths_text = "\n".join(msedgedriver_paths)
+            confirm_msg = f"将在以下位置用工作目录的msedgedriver.exe替换：\n\n{paths_text}\n\n工作目录版本：{working_version}\n\n确定要继续吗？"
+            if not messagebox.askyesno("确认替换", confirm_msg):
+                return
+
+            # 检查管理员权限（针对系统变量）
+            if path_type == "system":
+                try:
+                    import ctypes
+                    if not ctypes.windll.shell32.IsUserAnAdmin():
+                        messagebox.showerror("权限不足",
+                                           "系统变量替换需要管理员权限，请以管理员身份运行程序")
+                        return
+                except:
+                    pass
+
+            # 执行替换
+            success_count = 0
+            failed_paths = []
+
+            for safe_current_path in msedgedriver_paths:
+                try:
+                    # 备份原文件
+                    backup_path = safe_current_path + ".backup"
+                    if os.path.exists(backup_path):
+                        os.remove(backup_path)
+                    shutil.copy2(safe_current_path, backup_path)
+
+                    # 替换文件
+                    shutil.copy2(working_dir_driver, safe_current_path)
+                    success_count += 1
+
+                except Exception as e:
+                    failed_paths.append(f"{safe_current_path}: {str(e)}")
+
+            # 显示结果
+            if success_count > 0:
+                success_msg = f"成功替换 {success_count} 个文件"
+                if failed_paths:
+                    failed_text = "\n".join(failed_paths)
+                    success_msg += f"\n\n替换失败的文件：\n{failed_text}"
+                messagebox.showinfo("替换完成", success_msg)
+
+                # 重新检测显示更新后的版本信息
+                self.update_version_info(path_type)
+            else:
+                messagebox.showerror("替换失败", "所有文件替换都失败了")
+
+        except Exception as e:
+            messagebox.showerror("错误", f"替换过程中发生错误：{str(e)}")
 
 
 if __name__ == "__main__":
