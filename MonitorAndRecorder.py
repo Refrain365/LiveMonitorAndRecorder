@@ -19,6 +19,8 @@ import winreg
 import shutil
 import tempfile
 from typing import List, Dict
+import sqlite3
+
 
 # 获取临时解压目录
 base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
@@ -4032,20 +4034,20 @@ class DouyinCookieRefresher:
             self.root = tk.Tk()  # 如果是独立窗口
 
         self.root.title("录播Cookie刷新器 v1.0")
-        self.root.geometry("500x400")
+        self.root.geometry("500x520")
         self.root.resizable(False, False)
 
         # 居中显示窗口
         self.center_window()
 
         # 变量初始化
-        self.douyin_url = tk.StringVar()
         self.countdown_var = tk.StringVar(value="28")
         self.countdown_time = tk.IntVar(value=28)  # 倒计时时间（秒），范围20-300
         self.countdown_running = False
         self.driver = None
         self.cookie_file = "cookie.txt"
         self.parent = parent  # 保存父窗口引用
+        self.use_history_cookies = tk.BooleanVar(value=False)  # 是否使用历史cookies
 
         self.setup_ui()
 
@@ -4071,17 +4073,16 @@ class DouyinCookieRefresher:
 
         # 说明文字
         desc_label = ttk.Label(main_frame,
-                               text="请输入正在直播的抖音直播间链接\n格式示例: https://live.douyin.com/123456789\n设置倒计时时间后，点击[开始获得cookie]按钮",
+                               text="步骤：\n1. 可选择使用历史cookies\n2. 设置倒计时时间\n3. 点击下方按钮启动浏览器并打开抖音直播页面\n4. 手动在浏览器中打开一个正在开播的直播间\n5. 程序会自动选取含直播间号的标签页获取Cookie",
                                justify=tk.CENTER)
         desc_label.pack(pady=5)
 
-        # 输入框框架
-        input_frame = ttk.Frame(main_frame)
-        input_frame.pack(fill=tk.X, pady=15)
+        # 打开抖音直播页面按钮
+        open_button_frame = ttk.Frame(main_frame)
+        open_button_frame.pack(fill=tk.X, pady=15)
 
-        ttk.Label(input_frame, text="直播间链接:").pack(side=tk.LEFT)
-        url_entry = ttk.Entry(input_frame, textvariable=self.douyin_url, width=40)
-        url_entry.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+        ttk.Button(open_button_frame, text="打开抖音直播页面 (https://live.douyin.com)",
+                  command=self.open_douyin_live_page).pack(pady=10)
 
         # 倒计时时间调节
         countdown_setting_frame = ttk.Frame(main_frame)
@@ -4092,6 +4093,14 @@ class DouyinCookieRefresher:
                                         textvariable=self.countdown_time, width=10)
         countdown_spinbox.pack(side=tk.LEFT, padx=10)
         ttk.Label(countdown_setting_frame, text="秒 (范围: 20-300)").pack(side=tk.LEFT)
+
+        # 使用历史cookies的设置
+        history_cookies_frame = ttk.Frame(main_frame)
+        history_cookies_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Checkbutton(history_cookies_frame,
+                       text="使用历史cookies (douyinliveck.txt)",
+                       variable=self.use_history_cookies).pack(anchor=tk.W)
 
         # 倒计时显示
         countdown_frame = ttk.Frame(main_frame)
@@ -4107,59 +4116,34 @@ class DouyinCookieRefresher:
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(pady=20)
 
-        self.start_btn = ttk.Button(button_frame, text="开始获得cookie",
-                                    command=self.start_cookie_refresh)
-        self.start_btn.pack(side=tk.LEFT, padx=10)
-
         ttk.Button(button_frame, text="退出",
                    command=self.on_closing).pack(side=tk.LEFT, padx=10)
 
         # 状态显示
-        self.status_var = tk.StringVar(value="就绪 - 请输入抖音直播间链接")
+        self.status_var = tk.StringVar(value="就绪 - 请设置倒计时时间后点击按钮")
         status_label = ttk.Label(main_frame, textvariable=self.status_var,
                                  relief=tk.SUNKEN, anchor=tk.W)
         status_label.pack(fill=tk.X, pady=10)
 
-        # 绑定回车键
-        url_entry.bind('<Return>', lambda e: self.start_cookie_refresh())
-
         # 窗口关闭事件
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-    def start_cookie_refresh(self):
-        """开始Cookie刷新流程"""
-        url = self.douyin_url.get().strip()
-
-        if not url:
-            messagebox.showerror("错误", "请输入抖音直播间链接！")
-            return
-
-        # 验证URL格式
-        if not self.validate_douyin_url(url):
-            messagebox.showerror("错误",
-                                 "链接格式不正确！\n"
-                                 "正确格式示例: https://live.douyin.com/123456789")
-            return
-
+    def open_douyin_live_page(self):
+        """打开抖音直播页面并开始Cookie刷新流程"""
         # 验证倒计时时间
         countdown_time = self.countdown_time.get()
         if countdown_time < 20 or countdown_time > 300:
             messagebox.showerror("错误", "倒计时时间必须在20-300秒之间！")
             return
 
-        # 禁用开始按钮
-        self.start_btn.config(state="disabled")
-        self.status_var.set("正在启动浏览器...")
+        try:
+            self.status_var.set("正在启动浏览器...")
 
-        # 在新线程中执行Cookie获取
-        thread = threading.Thread(target=self.cookie_refresh_process, daemon=True)
-        thread.start()
-
-    def validate_douyin_url(self, url):
-        """验证抖音链接格式"""
-        import re
-        pattern = r'^https?://live\.douyin\.com/\d+'
-        return re.match(pattern, url) is not None
+            # 在新线程中执行Cookie获取
+            thread = threading.Thread(target=self.cookie_refresh_process, daemon=True)
+            thread.start()
+        except Exception as e:
+            messagebox.showerror("错误", f"启动失败: {str(e)}")
 
     def cookie_refresh_process(self):
         """Cookie刷新主流程"""
@@ -4167,7 +4151,6 @@ class DouyinCookieRefresher:
             # 启动浏览器
             if not self.start_browser():
                 self.root.after(0, lambda: self.status_var.set("浏览器启动失败"))
-                self.root.after(0, lambda: self.start_btn.config(state="normal"))
                 return
 
             # 开始倒计时
@@ -4177,7 +4160,31 @@ class DouyinCookieRefresher:
         except Exception as e:
             error_msg = str(e)
             self.root.after(0, lambda msg=error_msg: self.status_var.set(f"错误: {msg}"))
-            self.root.after(0, lambda: self.start_btn.config(state="normal"))
+
+    def load_history_cookies(self):
+        """从历史cookies文件加载cookies"""
+        try:
+            history_file = "douyinliveck.txt"
+            if not os.path.exists(history_file):
+                return None
+
+            with open(history_file, 'r', encoding='utf-8') as f:
+                cookies_data = json.load(f)
+
+            return cookies_data
+        except Exception as e:
+            print(f"加载历史cookies失败: {e}")
+            return None
+
+    def save_cookies_to_file(self, cookies):
+        """将cookies保存到历史文件"""
+        try:
+            history_file = "douyinliveck.txt"
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump(cookies, f, ensure_ascii=False, indent=2)
+            print(f"已保存cookies到 {history_file}")
+        except Exception as e:
+            print(f"保存cookies到文件失败: {e}")
 
     def start_browser(self):
         """启动浏览器"""
@@ -4193,10 +4200,25 @@ class DouyinCookieRefresher:
             self.driver = webdriver.Edge(options=options)
             self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
-            # 打开抖音直播间
-            url = self.douyin_url.get().strip()
-            self.root.after(0, lambda: self.status_var.set(f"正在打开: {url}"))
-            self.driver.get(url)
+            # 如果选择使用历史cookies，先加载cookies
+            if self.use_history_cookies.get():
+                self.root.after(0, lambda: self.status_var.set("正在加载历史cookies..."))
+                history_cookies = self.load_history_cookies()
+                if history_cookies:
+                    # 先访问一次抖音直播页面以设置cookie域
+                    self.driver.get("https://live.douyin.com")
+                    for cookie in history_cookies:
+                        try:
+                            self.driver.add_cookie(cookie)
+                        except Exception as e:
+                            print(f"添加历史cookie失败: {cookie.get('name', 'unknown')}, 错误: {e}")
+                    self.root.after(0, lambda: self.status_var.set("历史cookies加载完成"))
+                else:
+                    self.root.after(0, lambda: self.status_var.set("未找到历史cookies文件，继续..."))
+
+            # 打开抖音直播页面
+            self.root.after(0, lambda: self.status_var.set("正在打开抖音直播页面，请等待手动操作..."))
+            self.driver.get("https://live.douyin.com")
 
             return True
 
@@ -4254,7 +4276,32 @@ class DouyinCookieRefresher:
     def get_cookies(self):
         """获取并保存Cookie"""
         try:
-            self.root.after(0, lambda: self.status_var.set("正在获取Cookie..."))
+            self.root.after(0, lambda: self.status_var.set("正在查找直播间标签页..."))
+
+            # 获取所有窗口句柄
+            handles = self.driver.window_handles
+            target_handle = None
+            target_url = None
+
+            # 查找包含直播间号的标签页
+            for handle in handles:
+                self.driver.switch_to.window(handle)
+                current_url = self.driver.current_url
+                # 检查URL是否包含直播间号模式 (https://live.douyin.com/数字)
+                if re.match(r'https?://live\.douyin\.com/\d+', current_url):
+                    target_handle = handle
+                    target_url = current_url
+                    break
+
+            if not target_handle:
+                raise Exception("未找到包含直播间号的标签页，请确保已打开正在直播的直播间")
+
+            # 切换到目标标签页
+            self.driver.switch_to.window(target_handle)
+            self.root.after(0, lambda: self.status_var.set(f"已切换到直播间: {target_url}"))
+
+            # 等待页面加载
+            time.sleep(2)
 
             # 获取所有Cookie
             cookies = self.driver.get_cookies()
@@ -4277,6 +4324,9 @@ class DouyinCookieRefresher:
                 with open(quality_file, "w", encoding="utf-8") as f:
                     f.write(cookie_with_quality)
 
+            # 保存完整cookies到历史文件
+            self.save_cookies_to_file(cookies)
+
             # 关闭浏览器
             if self.driver:
                 self.driver.quit()
@@ -4294,7 +4344,8 @@ class DouyinCookieRefresher:
                 f"- {os.path.abspath('cookie_uhd.txt')} (uhd画质)\n"
                 f"- {os.path.abspath('cookie_hd.txt')} (hd画质)\n"
                 f"- {os.path.abspath('cookie_ld.txt')} (ld画质)\n"
-                f"- {os.path.abspath('cookie_sd.txt')} (sd画质)\n\n"
+                f"- {os.path.abspath('cookie_sd.txt')} (sd画质)\n"
+                f"- {os.path.abspath('douyinliveck.txt')} (完整cookies数据)\n\n"
                 f"origin画质Cookie内容已复制到剪贴板。"
             )
 
@@ -4304,8 +4355,7 @@ class DouyinCookieRefresher:
             self.root.clipboard_clear()
             self.root.clipboard_append(cookie_with_origin)
 
-            # 重新启用开始按钮
-            self.root.after(0, lambda: self.start_btn.config(state="normal"))
+            # Cookie获取完成
 
         except Exception as e:
             # 确保在异常情况下也关闭浏览器
@@ -4319,7 +4369,6 @@ class DouyinCookieRefresher:
             error_msg = str(e)
             self.root.after(0, lambda msg=error_msg: self.status_var.set(f"获取Cookie失败: {msg}"))
             self.root.after(0, lambda msg=error_msg: messagebox.showerror("错误", f"获取Cookie失败: {msg}"))
-            self.root.after(0, lambda: self.start_btn.config(state="normal"))
 
     def on_closing(self):
         """程序关闭时的清理工作"""
