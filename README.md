@@ -1,37 +1,58 @@
 # LiveMonitorAndRecorder
 
-这是一个直播监控录制助手。项目基于 Python 编程，Aria2 和 FFmpeg。  
-支持 douyin、bilibili 的主播直播状态监控提醒；以及 douyin 直播间录制（可录制任意画质的直播流）。  
-发行版支持 Windows 64 位系统。  
-目标是做最稳定和全能的直播间监控录制助手！
+一个直播监控与录制助手。
+
+Windows项目基于 **Python + Aria2 + FFmpeg**，Linux项目基于 **Python + Streamlink + FFmpeg**
+
+支持对主播直播状态进行监控提醒，并在开播后自动进行直播流录制。
+
+目前项目同时支持 **Windows** 与 **Linux** 平台。
 
 ---
 
-## Linux 支持说明（实验性）
+## 功能简介
 
-当前已提供 Linux 平台的核心功能实现，用于直播状态监控及录制。  
-部分 Windows 平台特有功能暂未支持.
+- 主播开播状态监控与提醒
+- 自动录制直播流
+- 支持 Douyin、Bilibili 等平台
+- 基于 FFmpeg 的稳定录制与封装
 
-### 运行环境要求
+---
+
+## 平台支持说明
+
+### Windows
+
+- Windows 版本为最初实现的平台
+- 提供完整的监控与录制能力
+- 相关实现与使用方式请参考 `Windows/` 目录
+
+---
+
+### Linux
+
+- Linux 版本为 **独立实现**，非简单移植
+- 功能层面已与原有 Windows 版本保持一致
+- 针对 Linux 长时间运行场景进行了稳定性与容错设计
+
+#### Linux 运行环境要求
 
 请确保系统中已正确安装以下依赖：
 
-- **ffmpeg**  
-  转码与封装核心组件，需确保支持无损封装 MP4  
-  ```bash
-  ffmpeg -version
-  ```
+- **[FFmpeg](https://ffmpeg.org/)**
+  转码与封装核心组件（需支持无损封装 MP4）
 
-- **streamlink**  
-  直播流解析引擎，用于抓取直播流  
-  ```bash
-  streamlink --version
-  ```
+- **[Streamlink](https://streamlink.github.io/)**
+  直播流解析引擎
 
-- **python3**  
-  主程序运行环境  
-  ```bash
-  python3 --version
-  ```
+- **[Python 3](https://www.python.org/downloads/)**
+  主程序运行环境
 
-> 建议使用较新的 Linux 发行版（如 Ubuntu 22.04+），以确保依赖版本兼容性。
+Linux 项目已在 Ubuntu 22.04 环境下测试通过
+
+---
+
+## 项目目标
+
+本项目的目标是逐步完善为一个 稳定、可靠、可长期运行 的直播监控与录制工具，适用于个人使用与服务器挂机场景。
+
