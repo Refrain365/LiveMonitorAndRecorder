@@ -1,233 +1,180 @@
-import sys
-import os
-import time
-import subprocess
-import logging
-import argparse
+import sys, os, time, subprocess, logging, argparse, signal, shutil
 from config import ConfigManager
-from monitor import LiveMonitor
 
-# --- 后台进程入口 ---
 if len(sys.argv) > 1 and '--daemon' in sys.argv:
     parser = argparse.ArgumentParser()
     parser.add_argument('--daemon', action='store_true')
     parser.add_argument('--mode', type=str, default='all')
-    args = parser.parse_args()
-
-    # === 优化点 1: 更清晰的时间格式 ===
-    logging.basicConfig(
-        level=logging.INFO,
-        format='[%(asctime)s] %(message)s',  # 加了方括号
-        datefmt='%Y-%m-%d %H:%M:%S',         # 年-月-日 时:分:秒
-        filename='monitor_daemon.log',
-        filemode='a'
-    )
-    
-    cfg = ConfigManager()
-    monitor = LiveMonitor(cfg)
-    monitor.run_check_loop(mode=args.mode)
+    args, _ = parser.parse_known_args()
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', filename='monitor_daemon.log', filemode='a')
+    from monitor import LiveMonitor
+    LiveMonitor(ConfigManager()).run_check_loop(mode=args.mode)
     sys.exit(0)
 
-# --- 交互界面 ---
+def graceful_exit(signum=None, frame=None):
+    print("\n\n\033[1;32m ✅ 程序已安全退出！\033[0m")
+    time.sleep(0.5); os.system('clear'); os._exit(0)
 
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+signal.signal(signal.SIGINT, graceful_exit)
 
-def print_header():
-    clear_screen()
-    print("="*40)
-    print("   LiveMonitor Linux (CLI交互版)")
-    print("="*40)
+def get_width(text):
+    """精准计算中英文混合字符串的显示宽度"""
+    width = 0
+    for char in text:
+        if ord(char) > 127: width += 2
+        else: width += 1
+    return width
 
-def get_non_empty_input(prompt):
+def pad_text(text, target_width):
+    """补齐空格以达到目标宽度，解决中文对齐问题"""
+    cur_w = get_width(text)
+    return text + " " * (target_width - cur_w)
+
+def header():
+    os.system('clear')
+    try:
+        t, u, f = shutil.disk_usage("/")
+        p = (u/t)*100
+        d_color = "\033[1;31m" if p > 90 else "\033[1;34m"
+        disk_info = f"{d_color}磁盘状态: {f/(1024**3):.1f}GB 剩余 ({p:.1f}% 已使用)\033[0m"
+    except: disk_info = ""
+    
+    # 斜体风格的 ASCII Art 标题
+    print("\033[1;36m")
+    print(r"    __    _             __  ___            _ _             ")
+    print(r"   / /   (_)   _____   /  |/  /___  ____  (_) /_____  _____")
+    print(r"  / /   / / | / / _ \ / /|_/ / __ \/ __ \/ / __/ __ \/ ___/")
+    print(r" / /___/ /| |/ /  __// /  / / /_/ / / / / / /_/ /_/ / /    ")
+    print(r"/_____/_/ |___/\___//_/  /_/\____/_/ /_/_/\__/\____/_/     ")
+    print("\033[0m")
+    print("-" * 68)
+    print(f"{disk_info.center(68)}")
+    print("-" * 68 + "\n")
+
+def menu_config(cfg):
     while True:
-        value = input(prompt).strip()
-        if value: return value
-        print("❌ 输入不能为空！")
-
-# --- 菜单逻辑 (Cookie 和 主播管理 部分保持不变，省略以节省篇幅) ---
-# ... (请保留原有的 menu_cookies 和 menu_streamers 函数) ...
-
-def menu_cookies(cfg):
-    # (保持原有代码不变)
-    while True:
-        print_header()
-        print("【1. 配置 Cookie & 全局设置】")
-        print("-" * 30)
-        print("1. 修改 Bilibili Cookie")
-        print("2. 修改 抖音 Cookie")
-        print("3. 修改 检测间隔 (当前: {}秒)".format(cfg.cookie_data['global_settings'].get('check_interval', 60)))
-        print("0. 返回上级")
-        print("-" * 30)
-        
-        c = input("请选择: ")
+        header()
+        gs = cfg.cookie_data['global_settings']
+        print("\033[1;33m【 1. 全 局 配 置 中 心 】\033[0m\n")
+        print(" 1. B站 Cookie 设置")
+        print(" 2. 抖音 Cookie 设置")
+        print(f" 3. 检测间隔 (当前: {gs['check_interval']}s)")
+        print(f" 4. 录制分段 (当前: {gs.get('split_size', 0)} GB)")
+        print(" 5. WxPusher AppToken")
+        print(" 6. 添加 WxPusher UID")
+        print(" 7. 清空所有推送 UID")
+        print("\n 0. 返回主菜单\n")
+        c = input("选择选项: ").strip()
         if c == '0': break
-        
-        if c == '1':
-            current = cfg.cookie_data['cookies'].get('bilibili', '')
-            print(f"\n当前 B站 Cookie: {current[:20]}..." if current else "\n当前为空")
-            val = input("请输入新Cookie (回车不改): ").strip()
-            if val:
-                cfg.cookie_data['cookies']['bilibili'] = val
-                cfg.save_cookie_settings()
-                print("✅ 保存成功")
-        elif c == '2':
-            current = cfg.cookie_data['cookies'].get('douyin', '')
-            print(f"\n当前 抖音 Cookie: {current[:20]}..." if current else "\n当前为空")
-            val = input("请输入新Cookie (回车不改): ").strip()
-            if val:
-                cfg.cookie_data['cookies']['douyin'] = val
-                cfg.save_cookie_settings()
-                print("✅ 保存成功")
-        elif c == '3':
-            val = input("请输入新的检测间隔(秒): ")
-            if val.isdigit():
-                cfg.cookie_data['global_settings']['check_interval'] = int(val)
-                cfg.save_cookie_settings()
-                print("✅ 保存成功")
-        time.sleep(1)
+        try:
+            if c == '4':
+                v = input("\n分段大小(GB, 0为不分): ").strip()
+                if v: gs['split_size'] = float(v)
+            elif c in ['1','2','3','5','6','7']:
+                if c == '7': cfg.cookie_data['notification']['wxpusher_uids'] = []
+                else:
+                    val = input("\n输入新值 (直接回车取消): ").strip()
+                    if val:
+                        if c == '1': cfg.cookie_data['cookies']['bilibili'] = val
+                        elif c == '2': cfg.cookie_data['cookies']['douyin'] = val
+                        elif c == '3': gs['check_interval'] = int(val)
+                        elif c == '5': cfg.cookie_data['notification']['wxpusher_app_token'] = val
+                        elif c == '6': cfg.cookie_data['notification']['wxpusher_uids'].append(val)
+            cfg.save_cookie_settings(); print("✅ 已更新")
+        except: print("❌ 输入有误")
+        time.sleep(0.8)
 
 def menu_streamers(cfg):
-    # (保持原有代码不变)
     while True:
-        print_header()
-        print("【2. 主播管理】")
-        print("-" * 30)
-        print("1. 添加 Bilibili 主播")
-        print("2. 添加 抖音 主播")
-        print("3. 查看/删除 已有主播")
-        print("0. 返回上级")
-        print("-" * 30)
+        header()
+        streamers = cfg.get_streamers()
+        mon_on = os.system("ps aux | grep 'main.py --daemon' | grep -v grep > /dev/null") == 0
+        print("\033[1;33m【 2. 主 播 管 理 后 台 】\033[0m\n")
+        # 严格计算宽度的表头
+        print(f" {'ID':<6}{pad_text('昵称', 22)}{pad_text('平台', 12)}{'当前状态'}")
+        print(" " + "-" * 62)
         
-        c = input("请选择: ")
+        for i, s in enumerate(streamers):
+            p_url = s['url'].split('?')[0]
+            if not mon_on:
+                status_ui = "\033[37m○ 未监控\033[0m"
+            else:
+                is_rec = os.system(f"ps aux | grep streamlink | grep 'REC_ID:{p_url}' | grep -v grep > /dev/null") == 0
+                status_ui = "\033[1;31m🔴 录制中\033[0m" if is_rec else "\033[1;32m● 监控中\033[0m"
+            
+            # 使用列表对齐函数
+            row = f" {i+1:<6}{pad_text(s['name'], 22)}{pad_text(s['platform'], 12)}{status_ui}"
+            print(row)
+            
+        print(" " + "-" * 62 + "\n")
+        print(" b. 添加 B站主播")
+        print(" d. 添加 抖音主播")
+        print(" q. 修改录制画质")
+        print(" x. 删除主播 (强制停止)")
+        print("\n 0. 返回主菜单\n")
+        c = input("操作: ").lower().strip()
         if c == '0': break
-        
-        if c in ['1', '2']:
-            is_bili = (c == '1')
-            platform = 'bilibili' if is_bili else 'douyin'
-            
-            print(f"\n正在添加 [{platform}] 主播")
-            name = get_non_empty_input("请输入主播昵称: ")
-            
-            print("\n请输入直播间链接:")
-            if is_bili: print("✅ 示例: https://live.bilibili.com/123456")
-            else: print("✅ 示例: https://live.douyin.com/123456 (请勿用短链)")
-            
-            url = get_non_empty_input("请输入链接: ")
-            rec = input("\n是否自动录制? (y/n, 默认y): ").strip().lower()
-            cfg.add_streamer(name, url, platform, rec != 'n')
-            print(f"\n✅ 已添加: {name} 到 {platform}.json")
-            time.sleep(1)
-            
-        elif c == '3':
-            all_s = []
-            bili_s = cfg.get_streamers('bilibili')
-            douyin_s = cfg.get_streamers('douyin')
-            for s in bili_s: s['_type'] = 'bilibili'
-            for s in douyin_s: s['_type'] = 'douyin'
-            all_s = bili_s + douyin_s
-            
-            if not all_s:
-                print("\n暂无主播。")
-                input("回车继续...")
-                continue
-                
-            print(f"\n{'ID':<4} {'平台':<10} {'昵称':<15} {'自动录制'}")
-            print("-" * 50)
-            for idx, s in enumerate(all_s):
-                print(f"{idx+1:<4} {s['_type']:<10} {s['name']:<15} {s.get('auto_record')}")
-            
-            print("-" * 50)
-            d = input("输入序号删除主播 (回车返回): ")
-            if d.isdigit():
-                idx = int(d) - 1
-                if 0 <= idx < len(all_s):
-                    target = all_s[idx]
-                    if target['_type'] == 'bilibili':
-                        cfg.bili_list.remove(target)
-                    else:
-                        cfg.douyin_list.remove(target)
-                    cfg.save_streamers()
-                    print(f"🗑️ 已删除: {target['name']}")
-                    time.sleep(1)
-
-def menu_start():
-    print_header()
-    print("【3. 启动监听】")
-    print("-" * 30)
-    print("1. 🚀 启动 - 监控 [所有主播]")
-    print("2. 🚀 启动 - 仅监控 [Bilibili]")
-    print("3. 🚀 启动 - 仅监控 [抖音]")
-    print("4. 🛑 暂停/停止 后台服务")
-    print("5. 📜 查看 实时日志")
-    print("0. 返回")
-    print("-" * 30)
-    
-    c = input("请选择: ")
-    mode = None
-    if c == '1': mode = 'all'
-    elif c == '2': mode = 'bilibili'
-    elif c == '3': mode = 'douyin'
-    
-    if mode:
-        os.system("pkill -f 'monitor_daemon.log' || true")
-        
-        if getattr(sys, 'frozen', False):
-            args = [sys.executable, "--daemon", "--mode", mode]
-        else:
-            args = [sys.executable, __file__, "--daemon", "--mode", mode]
-            
-        with open('monitor_daemon.log', 'a') as log_file:
-            subprocess.Popen(args, stdout=log_file, stderr=log_file, start_new_session=True)
-            
-        print(f"\n🚀 已启动后台服务 (模式: {mode})")
-        print("您可以直接关闭本窗口，录制不会停止。")
-        input("按回车返回...")
-        
-    elif c == '4':
-        print("\n正在停止监控主程序...")
-        
-        # === 优化点 2: 主动写入停止日志 ===
-        # 在杀进程之前，先往日志里写一句，确保留痕
         try:
-            timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-            with open('monitor_daemon.log', 'a') as f:
-                f.write(f"[{timestamp}] ⏸️ 用户请求暂停/停止服务...\n")
-        except:
-            pass
-            
-        os.system("pkill -f 'monitor_daemon.log'")
-        
-        print("⚠️  提示：正在进行的录制任务需要单独确认。")
-        kill_all = input("❓ 是否强制终止所有录制(Streamlink/FFmpeg)? (y/n): ").lower()
-        if kill_all == 'y':
-            os.system("pkill -f streamlink")
-            os.system("pkill -f ffmpeg")
-            print("✅ 已强制清理所有进程。")
-        else:
-            print("✅ 监控已停，录制继续。")
-        time.sleep(2)
-        
-    elif c == '5':
-        print("\n正在查看日志 (Ctrl+C 退出)...")
+            if c == 'b' or c == 'd':
+                name, url = input("昵称: ").strip(), input("链接: ").strip()
+                if name and url: cfg.add_streamer(name, url, 'bilibili' if c=='b' else 'douyin')
+            elif c == 'q':
+                idx = int(input("主播 ID: ")) - 1
+                q = input("画质(best/1080p): ").strip()
+                if q: streamers[idx]['quality'] = q; cfg.save_streamers()
+            elif c == 'x':
+                idx = int(input("删除 ID: ")) - 1
+                s = streamers[idx]
+                if input(f"❗ 确定删除 {s['name']}? (y/n): ").lower() == 'y':
+                    os.system(f"pkill -9 -f 'REC_ID:{s['url'].split('?')[0]}'")
+                    if s['platform'] == 'bilibili': cfg.bili_list.remove(s)
+                    else: cfg.douyin_list.remove(s)
+                    cfg.save_streamers()
+        except: print("⚠️ 操作有误")
         time.sleep(1)
-        try: os.system("tail -f monitor_daemon.log")
-        except: pass
+
+def menu_service():
+    while True:
+        header()
+        mon_on = os.system("ps aux | grep 'main.py --daemon' | grep -v grep > /dev/null") == 0
+        notif_on = os.system("ps aux | grep 'notifier.py' | grep -v grep > /dev/null") == 0
+        print("\033[1;33m【 3. 推 送 & 监 控 录 制 后 台 设 置 】\033[0m\n")
+        print(f" 1. 推送后台服务: {'🟢 运行中' if notif_on else '🔴 已停止'}")
+        print(f" 2. 监控录制后台: {'🟢 运行中' if mon_on else '🔴 已停止'}\n")
+        print("-" * 35)
+        print(" s1. 🚀 启动 [推送后台]")
+        print(" s2. 🚀 启动 [监控任务]")
+        print(" stop. 🛑 停止 [所有后台服务]")
+        print(" re. 🔄 重启 [所有服务逻辑]")
+        print(" l1. 📜 查看监控日志")
+        print(" l2. 📜 查看推送日志")
+        print("\n 0. 返回主菜单\n")
+        c = input("指令: ").lower().strip()
+        if c == '0': break
+        if c == 's1': subprocess.Popen([sys.executable, "notifier.py"], start_new_session=True)
+        elif c == 's2': subprocess.Popen([sys.executable, __file__, "--daemon", "--mode", "all"], start_new_session=True)
+        elif c == 'stop':
+            os.system("pkill -9 -f 'monitor_daemon.log' || true")
+            os.system("pkill -9 -f 'main.py --daemon' || true")
+            os.system("pkill -9 -f 'notifier.py' || true")
+            if input("同步杀掉录制进程? (y/n): ").lower() == 'y': os.system("pkill -9 -f streamlink || true")
+        elif c == 'l1': os.system("tail -f monitor_daemon.log")
+        elif c == 'l2': os.system("tail -f notifier_daemon.log")
+        time.sleep(0.8)
 
 def main():
     cfg = ConfigManager()
     while True:
-        print_header()
-        print("1. 配置 Cookie & 全局设置")
-        print("2. 添加/管理 主播")
-        print("3. 开始监听 (后台模式)")
-        print("0. 退出程序")
-        print("-" * 40)
-        choice = input("请输入选项: ")
-        if choice == '1': menu_cookies(cfg)
+        header()
+        print(" 1. 配置中心 (Cookie/推送/分段)")
+        print(" 2. 主播管理 (添加/删除/对齐看板)")
+        print(" 3. 推送 & 监控录制后台设置")
+        print("\n 0. 退出程序")
+        choice = input("\n请选择序号: ").strip()
+        if choice == '1': menu_config(cfg)
         elif choice == '2': menu_streamers(cfg)
-        elif choice == '3': menu_start()
-        elif choice == '0': sys.exit()
+        elif choice == '3': menu_service()
+        elif choice == '0': graceful_exit()
 
 if __name__ == "__main__":
     main()
