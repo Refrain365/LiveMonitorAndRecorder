@@ -1,0 +1,2 @@
+pip install pyinstaller
+pyinstaller MonitorAndRecorder.py -i icon.ico -F -w --icon=icon.ico --add-data "aria2.bat;." --add-data "aria2.vbs;." --add-data "aria2c.exe;." --add-data "ffmpeg.exe;." --add-data "icon.ico;." --add-data "高级系统设置.lnk;." --add-data "aria2setting.html;."
