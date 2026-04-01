@@ -26,7 +26,7 @@ import sqlite3
 base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 
 # 定义需要复制的文件列表
-files_to_copy = ['ffmpeg.exe','高级系统设置.lnk']
+files_to_copy = ['ffmpeg.exe','高级系统设置.lnk','aria2setting.html']
 
 # 复制文件到当前运行目录
 for file in files_to_copy:
@@ -565,6 +565,13 @@ class StreamerManagerApp:
             self.load_automations()
 
 
+
+
+
+
+    
+    
+
 class StreamerDialog(simpledialog.Dialog):
     def __init__(self, parent, title, streamer=None):
         self.streamer = streamer or {}
@@ -577,7 +584,7 @@ class StreamerDialog(simpledialog.Dialog):
         self.name_entry.grid(row=0, column=1, padx=5, pady=5)
 
         ttk.Label(master, text="平台:").grid(row=1, sticky='w', pady=5)
-        self.platform_combo = ttk.Combobox(master, values=["抖音", "哔哔哩哔哔哩"], width=27)
+        self.platform_combo = ttk.Combobox(master, values=["抖音", "哔哩哔哩"], width=27)
         self.platform_combo.grid(row=1, column=1, padx=5, pady=5)
 
         ttk.Label(master, text="ID/链接:").grid(row=2, sticky='w', pady=5)
@@ -832,6 +839,501 @@ class AutomationDialog(simpledialog.Dialog):
 
 class ScriptGenerator:
     #----------------模板文件起------------------------
+    def _get_extreme_template(self):
+        """获取极致模板 (适用于蓝V连麦)"""
+        return r'''import re
+import subprocess
+import time
+import requests
+import os
+import sys
+import random
+import json
+from datetime import datetime
+import psutil
+# 获取当前脚本所在目录作为基础目录
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def check_single_instance():
+    """检查是否已有相同脚本在运行"""
+    try:
+        # 基于脚本路径和主播名称创建唯一标识
+        script_name = os.path.basename(__file__)
+        if 'SPECIFIED_NAME' in globals():
+            instance_id = f"{script_name}_{SPECIFIED_NAME}"
+        else:
+            instance_id = script_name
+
+        # 获取当前进程的PID
+        current_pid = os.getpid()
+
+        # 遍历所有进程
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                # 跳过当前进程
+                if proc.info['pid'] == current_pid:
+                    continue
+
+                # 检查命令行参数中是否包含实例标识
+                cmdline = proc.info.get('cmdline', [])
+                if instance_id in ' '.join(cmdline):
+                    print(f"已经有一个实例在运行: {instance_id}")
+                    sys.exit(1)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+    except Exception as e:
+        print(f"检查单实例时出错: {e}")
+
+# 配置参数
+LIVE_ID = 1234567890
+LIVE_URL = f"https://live.douyin.com/{LIVE_ID}"
+ARIA2_BAT_PATH = "aria2.bat"  # 使用相对路径
+ARIA2_RPC_URL = "http://localhost:6800/jsonrpc"
+SPEED_THRESHOLD = 100  # KB/s
+MAX_EMPTY_RETRIES = 5
+SPECIFIED_NAME = "主播名字"  # 可以修改为您想要的名称，如果为空则使用默认命名
+LOG_INTERVAL = 30  # 日志输出间隔，单位秒（将在生成时替换）
+UA_LIST = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/130.0.2849.46",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/130.0.2849.68",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/131.0.2903.51",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/131.0.2903.79",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/132.0.2957.41",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/132.0.2957.80",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/133.0.2990.32",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/133.0.2990.61",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/134.0.3020.30",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/134.0.3020.70",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/135.0.3065.27"
+]
+FIXED_UA = random.choice(UA_LIST)
+
+# 使用程序目录下的cookie文件
+COOKIE_FILE = os.path.join(BASE_DIR, 'cookie.txt')
+with open(COOKIE_FILE, 'r', encoding='utf-8') as file:
+    cookies2 = file.read()
+
+# 请求头
+HEADERS = {
+    "User-Agent": FIXED_UA,
+    "Cookie": f"{cookies2}",
+    "Referer": f"https://live.douyin.com/{LIVE_ID}",
+    "authority": "live.douyin.com",
+    "method": "GET",
+    "path": f"/{LIVE_ID}"
+}
+
+def get_current_datetime_string():
+    """获取当前日期时间字符串，格式为YYYYMMDD_HHMMSS"""
+    now = datetime.now()
+    return now.strftime("%Y%m%d-%H%M%S")
+
+def generate_filename(quality_suffix=""):
+    """生成文件名，保存在当前工作目录下"""
+    datetime_str = get_current_datetime_string()
+
+    if SPECIFIED_NAME and SPECIFIED_NAME.strip():
+        if quality_suffix:
+            return f"{SPECIFIED_NAME}-{datetime_str}-抖音-{SPECIFIED_NAME}_{quality_suffix}.flv"  # 返回相对路径
+        else:
+            return f"{SPECIFIED_NAME}_{datetime_str}.flv"
+    else:
+        if quality_suffix:
+            return f"live_{datetime_str}_{quality_suffix}.flv"
+        else:
+            return f"live_{datetime_str}.flv"
+
+def check_aria2_running():
+    """检查 Aria2 是否已经在运行"""
+    try:
+        headers = {'Content-Type': 'application/json'}
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "aria2.getVersion",
+            "id": "1"
+        }
+        response = requests.post(ARIA2_RPC_URL, json=payload, headers=headers, timeout=5)
+        return response.status_code == 200
+    except:
+        return False
+
+def find_stream_url(url: str) -> str:
+    """返回第一条可用的 flv；若无 flv 则返回第一条 m3u8"""
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+
+        # 1. 优先 flv
+        flv_pattern = re.compile(r'"(https?://[^"]+\.flv[^"]*)"')
+        flv_urls = flv_pattern.findall(resp.text)
+        # 新增：过滤纯音频链接
+        filtered_flv_urls = []
+        for flv_url in flv_urls:
+            if "only_audio=1" in flv_url:
+                print(f"[find_stream_url] 检测到纯音频链接 (only_audio=1)，已弃用: {flv_url}")
+                continue  # 跳过此链接，不加入可用列表
+            else:
+                filtered_flv_urls.append(flv_url)
+
+        if filtered_flv_urls:
+            return filtered_flv_urls[0]
+
+        # 2. 退回 m3u8
+        m3u8_pattern = re.compile(r'"(https?://[^"]+\.m3u8[^"]*)"')
+        m3u8_urls = m3u8_pattern.findall(resp.text)
+        # 新增：同样过滤纯音频链接（如果存在）
+        filtered_m3u8_urls = []
+        for m3u8_url in m3u8_urls:
+            if "only_audio=1" in m3u8_url:
+                print(f"[find_stream_url] 检测到纯音频链接 (only_audio=1)，已弃用: {m3u8_url}")
+                continue
+            else:
+                filtered_m3u8_urls.append(m3u8_url)
+
+        if filtered_m3u8_urls:
+            return filtered_m3u8_urls[0]
+
+        return ""
+    except Exception as e:
+        print(f"[find_stream_url] 获取直播流时出错: {e}")
+        return ""
+
+def start_aria2():
+    """启动 Aria2 下载器（如果未运行）"""
+    # 先检查 Aria2 是否已经在运行
+    if check_aria2_running():
+        print("Aria2 已经在运行中，跳过启动。")
+        return
+
+    try:
+        print("正在启动 Aria2...")
+        subprocess.Popen([ARIA2_BAT_PATH], shell=True)
+        time.sleep(5)  # 等待 Aria2 启动
+
+        # 验证 Aria2 是否成功启动
+        if check_aria2_running():
+            print("Aria2 启动完成")
+        else:
+            print("Aria2 可能未正确启动，将继续尝试...")
+    except Exception as e:
+        print(f"启动 Aria2 时出错: {e}")
+
+# 在所有录播脚本模板的 submit_to_aria2 函数中修改：
+
+def submit_to_aria2(url, filename=None):
+    headers = {'Content-Type': 'application/json'}
+
+    # 先定义options
+    options = {}
+    if filename:
+        options["out"] = filename
+
+    # 设置下载目录为当前工作目录（EXE所在目录）
+    options["dir"] = BASE_DIR
+
+    # 添加User-Agent和其他头信息
+    aria2_headers = {
+        "User-Agent": FIXED_UA,
+        "Referer": f"https://live.douyin.com/{LIVE_ID}"
+    }
+
+    # 添加header选项
+    header_list = []
+    for key, value in aria2_headers.items():
+        header_list.append(f"{key}: {value}")
+    options["header"] = header_list
+
+    # 构建参数
+    params = [[url], options]
+
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "aria2.addUri",
+        "id": "1",
+        "params": params
+    }
+
+    try:
+        response = requests.post(ARIA2_RPC_URL, json=payload, headers=headers)
+        if response.status_code == 200:
+            result = response.json()
+            if 'result' in result:
+                print(f"[submit_to_aria2] 成功添加下载任务，任务 ID: {result['result']}")
+                if filename:
+                    print(f"[submit_to_aria2] 文件将保存为: {os.path.join(BASE_DIR, filename)}")
+                return result['result']  # 返回任务ID
+            else:
+                print(f"[submit_to_aria2] 添加下载任务失败: {result}")
+                return None
+        else:
+            print(f"[submit_to_aria2] 请求失败，状态码: {response.status_code}")
+            return None
+    except requests.RequestException as e:
+        print(f"[submit_to_aria2] 网络请求出错: {e}")
+        # 尝试启动 Aria2 并重新提交
+        start_aria2()
+        time.sleep(3)
+        return submit_to_aria2(url, filename)
+
+def get_aria2_speed():
+    """获取 Aria2 当前所有任务的总下载速度（KB/s）"""
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "aria2.getGlobalStat",
+        "id": "1"
+    }
+
+    try:
+        response = requests.post(ARIA2_RPC_URL, json=payload, headers=headers, timeout=10)
+        if response.status_code == 200:
+            result = response.json()
+            if 'result' in result:
+                # 下载速度是字节/秒，转换为KB/s
+                download_speed = int(result['result'].get('downloadSpeed', 0)) / 1024
+                return download_speed
+        return 0
+    except Exception as e:
+        print(f"[get_aria2_speed] 获取速度时出错: {e}")
+        return 0
+
+def get_active_tasks():
+    """获取活跃的下载任务列表"""
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "aria2.tellActive",
+        "id": "1"
+    }
+
+    try:
+        response = requests.post(ARIA2_RPC_URL, json=payload, headers=headers, timeout=10)
+        if response.status_code == 200:
+            result = response.json()
+            if 'result' in result:
+                return result['result']
+        return []
+    except Exception as e:
+        print(f"[get_active_tasks] 获取任务列表时出错: {e}")
+        return []
+
+def stop_aria2_task(gid):
+    """停止指定的下载任务"""
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "aria2.remove",
+        "id": "1",
+        "params": [gid]
+    }
+
+    try:
+        response = requests.post(ARIA2_RPC_URL, json=payload, headers=headers, timeout=10)
+        if response.status_code == 200:
+            result = response.json()
+            if 'result' in result:
+                print(f"[stop_aria2_task] 成功停止任务: {gid}")
+                return True
+        return False
+    except Exception as e:
+        print(f"[stop_aria2_task] 停止任务时出错: {e}")
+        return False
+
+def get_quality_from_url(url):
+    """从URL中提取质量标识"""
+    if "sd.flv" in url:
+        return "sd"
+    elif "ld.flv" in url:
+        return "ld"
+    elif "md.flv" in url:
+        return "md"
+    elif "or4.flv" in url:
+        return "or4"
+    elif "uhd.flv" in url:
+        return "uhd"
+    elif "hd.flv" in url:
+        return "hd"
+    else:
+        return "max"
+
+def is_high_quality(url):
+    """判断是否为高质量链接（极致画质：蓝V连麦专用）"""
+    return "or4.flv" in url
+
+def is_acceptable_quality(url):
+    """判断是否为可接受的质量链接（保持录播完整性）"""
+    return "sd.flv" in url or "ld.flv" in url or "hd.flv" in url or "uhd.flv" in url or "or4.flv" in url
+
+
+def get_quality_priority(quality):
+    """获取画质优先级，数值越大表示画质越好"""
+    # 极致画质优先级最高
+    quality_priority = {
+        "max": 7,   # 最高优先级（极致画质）
+        "or4": 6,
+        "uhd": 5,
+        "hd": 4,
+        "ld": 3,
+        "sd": 2,
+        "unknown": 1,
+    }
+    return quality_priority.get(quality, 0)
+
+
+def is_better_quality(new_quality, current_quality):
+    """判断新画质是否比当前画质更好"""
+    return get_quality_priority(new_quality) > get_quality_priority(current_quality)
+
+
+def main():
+    try:
+        # 先启动 Aria2
+        start_aria2()
+        time.sleep(3)
+
+        # 主循环
+        while True:
+            empty_retries = 0
+            current_task_id = None
+            current_quality = ""
+            found_high_quality = False
+            no_improve_deadline = None
+            last_log_time = 0
+
+            # 第一阶段：寻找合适的直播流
+            while not found_high_quality:
+                print("[main] 开始抓取直播流链接...")
+
+                # 获取直播流链接
+                raw_url = find_stream_url(LIVE_URL)
+
+                if not raw_url:
+                    time.sleep(1.5)
+                    empty_retries += 1
+                    print(f"[main] 第 {empty_retries} 次获取到空链接")
+
+                    if empty_retries >= MAX_EMPTY_RETRIES:
+                        print(f"[main] 空链接超过 {MAX_EMPTY_RETRIES} 次，程序退出")
+                        return
+
+                    time.sleep(random.uniform(6, 9))
+                    continue
+
+                # 重置空链接计数器
+                empty_retries = 0
+
+                # 清洗链接
+                clean_url = raw_url.replace(r"\u0026", "&").rstrip('\\')
+                quality = get_quality_from_url(clean_url)
+
+                # 输出信息（不再受日志间隔限制）
+                current_time = time.time()
+                print(f"[main] 获取到直播流: {clean_url} (质量: {quality})")
+
+                # 如果是第一次找到可接受质量的链接，或者找到了更高质量的链接
+                if current_task_id is None or (is_better_quality(quality, current_quality) and not found_high_quality):
+                    filename = generate_filename(quality)
+                    print(f"[main] 生成文件名: {filename}")
+
+                    # 提交到 Aria2
+                    task_id = submit_to_aria2(clean_url, filename)
+
+                    if task_id:
+                        # 如果之前有任务在运行，并且找到了更高质量的链接，则停止之前的任务
+                        if current_task_id is not None and is_better_quality(quality, current_quality) and not found_high_quality:
+                            print(f"[main] 找到更高质量链接 ({quality} > {current_quality})，停止之前的任务: {current_task_id}")
+                            stop_aria2_task(current_task_id)
+
+                        # 更新当前任务信息
+                        current_task_id = task_id
+                        current_quality = quality
+
+                        # 初始化无提升截止时间
+                        if no_improve_deadline is None:
+                            no_improve_deadline = time.time() + 45
+
+                        # 如果是目标质量链接，标记为已找到
+                        # 极致画质目标：获取max画质（或or4）
+                        if quality == "max":
+                            found_high_quality = True
+                            print("[main] 目标质量链接已找到，立即进入速度监控...")
+                            break  # 跳出寻找循环，进入速度监控
+                    else:
+                        print("[main] 下载任务提交失败，重新开始...")
+                        time.sleep(2)
+                        continue
+
+                # 如果超过45秒画质无变化，则停止提升，进入速度监控
+                if no_improve_deadline is not None and time.time() > no_improve_deadline:
+                    print("[main] 已超过45秒未提升画质，进入速度监控")
+                    found_high_quality = True
+                    break
+
+                print(f"[main] 当前画质: {current_quality}，继续寻找更高质量链接...")
+                time.sleep(3)  # 缩短循环间隔为3秒
+
+            # 第二阶段：监控下载速度
+            print("[main] 开始监控下载速度...")
+            low_speed_count = 0
+            last_detailed_log_time = 0
+
+            while found_high_quality:
+                current_speed = get_aria2_speed()
+                active_tasks = get_active_tasks()
+                task_count = len(active_tasks)
+
+                current_time = time.time()
+
+                # 每10秒输出一次详细信息
+                if current_time - last_detailed_log_time >= 10:
+                    print(f"[速度监控] 下载速度: {current_speed:.2f} KB/s, 活跃任务数: {task_count}")
+
+                    # 显示活跃任务信息
+                    for i, task in enumerate(active_tasks):
+                        task_name = task.get('files', [{}])[0].get('path', '未知文件')
+                        completed = int(task.get('completedLength', 0))
+                        total = int(task.get('totalLength', 0))
+                        if total > 0:
+                            progress = (completed / total) * 100
+                        else:
+                            progress = 0
+                        print(f"  任务 {i + 1}: {task_name} - 进度: {progress:.1f}%")
+
+                    last_detailed_log_time = current_time
+                else:
+                    # 每3秒输出简略状态
+                    print(f"[速度监控] 当前速度: {current_speed:.2f} KB/s")
+
+                # 检查速度是否低于阈值
+                if current_speed < SPEED_THRESHOLD:
+                    low_speed_count += 1
+                    print(f"[速度监控] 速度低于阈值 ({SPEED_THRESHOLD} KB/s)，计数: {low_speed_count}")
+
+                    if low_speed_count >= 5:
+                        print("[速度监控] 速度持续过低，重新开始获取链接...")
+                        found_high_quality = False  # 退出速度监控循环
+                        break
+                else:
+                    low_speed_count = 0  # 重置计数器
+
+                time.sleep(3)  # 严格3秒监控间隔
+
+            # 如果跳出速度监控循环，会回到外层循环，重新开始整个过程
+
+    except KeyboardInterrupt:
+        print("\n[main] 程序被用户中断")
+    except Exception as e:
+        print(f"[main] 程序运行出错: {e}")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n[main] 程序被用户中断")
+    except Exception as e:
+        print(f"[main] 程序运行出错: {e}")
+    '''
+
     def _get_or4_template(self):
         """获取原画模板 (文档5)"""
         return r'''import re
@@ -3387,8 +3889,9 @@ ping -n 10 127.0.0.1 >nul
         self.log_messages = []  # 存储日志消息
         self.log_interval_var = tk.StringVar(value="30")  # 默认30秒
 
-        # 画质选项映射到模板文件
+        # 画质选项映射到模板文件（极致在最前面，之下是原画）
         self.quality_map = {
+            "极致：适用蓝V，连麦": self._get_extreme_template(),
             "原画": self._get_or4_template(),
             "蓝光": self._get_uhd_template(),
             "超清": self._get_hd_template(),
@@ -3585,8 +4088,11 @@ ping -n 10 127.0.0.1 >nul
                     quality_match = re.search(r'def is_high_quality\(url\):\s*.*?return\s+"([^"]+)"\s+in\s+url', content, re.DOTALL)
                     if quality_match:
                         quality_str = quality_match.group(1)
-                        # 根据画质字符串判断画质
-                        if "or4.flv" in quality_str:
+                        # 先检查是否为极致画质（通过get_quality_priority中是否有max: 7来判断）
+                        extreme_check = re.search(r'"max":\s*7', content)
+                        if extreme_check and "or4.flv" in quality_str:
+                            quality_name = "极致"
+                        elif "or4.flv" in quality_str:
                             quality_name = "原画"
                         elif "uhd.flv" in quality_str:
                             quality_name = "蓝光"
@@ -3944,6 +4450,7 @@ ping -n 10 127.0.0.1 >nul
             # 未勾选时，使get_quality_from_url函数只返回高质量标识
             # 根据选择的画质确定高质量标识
             quality_mapping = {
+                "极致": "or4",
                 "原画": "or4",
                 "蓝光": "uhd",
                 "超清": "hd",
@@ -4022,6 +4529,324 @@ def is_high_quality(url):
             return False
 
         return True
+
+#---------------------------------以下为监控Cookie刷新--------------------------------------
+
+class MonitorCookieRefreshDialog:
+    """监控Cookie刷新方式选择对话框"""
+    def __init__(self, parent, callback):
+        self.parent = parent
+        self.callback = callback  # 回调函数，接收cookie参数
+
+        self.root = tk.Toplevel(parent)
+        self.root.title("选择刷新监控Cookie的方式")
+        self.root.geometry("550x660")
+        self.root.resizable(False, False)
+        self.root.transient(parent)
+        self.root.grab_set()
+
+        # 居中显示
+        self.root.update_idletasks()
+        x = (self.root.winfo_screenwidth() // 2) - (550 // 2)
+        y = (self.root.winfo_screenheight() // 2) - (660 // 2)
+        self.root.geometry(f"550x660+{x}+{y}")
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        """设置界面"""
+        main_frame = ttk.Frame(self.root, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # 标题
+        title_label = ttk.Label(main_frame, text="请选择刷新监控Cookie的方式",
+                                font=("Arial", 16, "bold"))
+        title_label.pack(pady=20)
+
+        # 方法按钮框架
+        methods_frame = ttk.Frame(main_frame)
+        methods_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        # 方法一：家用电脑
+        method1_frame = ttk.LabelFrame(methods_frame, text="", padding="10")
+        method1_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Label(method1_frame, text="方法一（家用电脑）：不登录获得Cookie",
+                 font=("Arial", 12, "bold")).pack(anchor=tk.W, pady=5)
+        ttk.Label(method1_frame, text="适用于家用电脑，使用程序启动时自动获取抖音Cookie的方法",
+                 wraplength=500).pack(anchor=tk.W, pady=5)
+        ttk.Button(method1_frame, text="使用方法一获取",
+                  command=self.method1_get_cookie).pack(anchor=tk.W, pady=5)
+
+        # 方法二：服务器
+        method2_frame = ttk.LabelFrame(methods_frame, text="", padding="10")
+        method2_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Label(method2_frame, text="方法二（服务器）：登录并获得Cookie",
+                 font=("Arial", 12, "bold")).pack(anchor=tk.W, pady=5)
+        ttk.Label(method2_frame, text="适用于服务器环境，打开个人主页完成登录后获取Cookie",
+                 wraplength=500).pack(anchor=tk.W, pady=5)
+        ttk.Button(method2_frame, text="使用方法二获取",
+                  command=self.method2_get_cookie).pack(anchor=tk.W, pady=5)
+
+        # 方法三：手动填写
+        method3_frame = ttk.LabelFrame(methods_frame, text="", padding="10")
+        method3_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Label(method3_frame, text="方法三：手动填写Cookie",
+                 font=("Arial", 12, "bold")).pack(anchor=tk.W, pady=5)
+        ttk.Label(method3_frame, text="手动复制粘贴Cookie内容",
+                 wraplength=500).pack(anchor=tk.W, pady=5)
+        ttk.Button(method3_frame, text="使用方法三填写",
+                  command=self.method3_input_cookie).pack(anchor=tk.W, pady=5)
+
+        # 取消按钮
+        ttk.Button(main_frame, text="取消",
+                  command=self.root.destroy).pack(pady=10)
+
+    def method1_get_cookie(self):
+        """方法一：使用auto_get_douyin_cookie方法获取cookie"""
+        self.root.destroy()
+        self.callback("method1")
+
+    def method2_get_cookie(self):
+        """方法二：打开监控Cookie刷新器"""
+        self.root.destroy()
+        self.callback("method2")
+
+    def method3_input_cookie(self):
+        """方法三：手动输入cookie"""
+        self.root.destroy()
+        self.callback("method3")
+
+
+class MonitorCookieRefresher:
+    """监控Cookie刷新器（用于服务器环境）"""
+    def __init__(self, parent=None, callback=None):
+        if parent:
+            self.root = tk.Toplevel(parent)
+            self.root.transient(parent)
+            self.root.grab_set()
+        else:
+            self.root = tk.Tk()
+
+        self.root.title("监控Cookie刷新器 v1.0")
+        self.root.geometry("500x480")
+        self.root.resizable(False, False)
+        self.parent = parent
+        self.callback = callback
+
+        # 居中显示窗口
+        self.center_window()
+
+        # 变量初始化
+        self.driver = None
+        # 检查历史cookies文件是否存在，设置对勾的默认状态
+        history_file = "douyinliveck.txt"
+        use_history = os.path.exists(history_file)
+        self.use_history_cookies = tk.BooleanVar(value=use_history)
+        self.status_var = tk.StringVar(value="就绪 - 请按照说明操作")
+
+        self.setup_ui()
+
+    def center_window(self):
+        """窗口居中显示"""
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
+
+    def setup_ui(self):
+        """设置用户界面"""
+        # 主框架
+        main_frame = ttk.Frame(self.root, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # 标题
+        title_label = ttk.Label(main_frame, text="监控Cookie刷新器",
+                                font=("Arial", 16, "bold"))
+        title_label.pack(pady=10)
+
+        # 说明文字
+        desc_label = ttk.Label(main_frame,
+                               text="步骤：\n1. 点击下方按钮打开抖音个人主页\n2. 登录成功后，尽量保存登录信息\n3. 完成登录后，点击'我已登录，下一步'按钮\n4. 程序会访问指定页面并采集Cookie\n5. 如果启动时自动获得Cookie，请更改获取方式为'登录获得Cookie'",
+                               justify=tk.CENTER)
+        desc_label.pack(pady=5)
+
+        # 使用历史cookies的设置
+        history_cookies_frame = ttk.Frame(main_frame)
+        history_cookies_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Checkbutton(history_cookies_frame,
+                       text="使用历史cookies (douyinliveck.txt)",
+                       variable=self.use_history_cookies).pack(anchor=tk.W)
+
+        # 打开抖音个人主页按钮
+        open_button_frame = ttk.Frame(main_frame)
+        open_button_frame.pack(fill=tk.X, pady=15)
+
+        self.open_button = ttk.Button(open_button_frame, text="打开抖音个人主页 (https://www.douyin.com/user/self)",
+                  command=self.open_douyin_profile)
+        self.open_button.pack(pady=10)
+
+        # 我已登录，下一步按钮
+        self.next_button = ttk.Button(open_button_frame, text="我已登录，下一步",
+                  command=self.next_step, state=tk.DISABLED)
+        self.next_button.pack(pady=5)
+
+        # 按钮框架
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=20)
+
+        ttk.Button(button_frame, text="退出",
+                   command=self.on_closing).pack(side=tk.LEFT, padx=10)
+
+        # 状态显示
+        status_label = ttk.Label(main_frame, textvariable=self.status_var,
+                                 relief=tk.SUNKEN, anchor=tk.W)
+        status_label.pack(fill=tk.X, pady=10)
+
+        # 窗口关闭事件
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def open_douyin_profile(self):
+        """打开抖音个人主页"""
+        try:
+            self.status_var.set("正在启动浏览器...")
+
+            # 在新线程中执行
+            thread = threading.Thread(target=self._open_profile_process, daemon=True)
+            thread.start()
+        except Exception as e:
+            messagebox.showerror("错误", f"启动失败: {str(e)}")
+            self.status_var.set("浏览器启动失败")
+
+    def _open_profile_process(self):
+        """在后台线程中打开个人主页"""
+        try:
+            # 启动浏览器
+            from selenium.webdriver.edge.options import Options as EdgeOptions
+            from selenium.webdriver.edge.webdriver import WebDriver as Edge
+
+            options = EdgeOptions()
+            options.use_chromium = True
+
+            self.driver = Edge(options=options)
+
+            # 先打开个人主页以设置cookie域
+            self.driver.get("https://www.douyin.com/user/self")
+
+            # 加载历史cookies（如果启用）
+            if self.use_history_cookies.get():
+                self.load_history_cookies()
+
+            # 再次访问个人主页让cookies生效
+            self.driver.get("https://www.douyin.com/user/self")
+
+            self.root.after(0, lambda: self.status_var.set("已打开个人主页，请在浏览器中完成登录"))
+            self.root.after(0, lambda: self.next_button.config(state=tk.NORMAL))
+            self.root.after(0, lambda: self.open_button.config(state=tk.DISABLED))
+
+        except Exception as e:
+            error_msg = str(e)
+            self.root.after(0, lambda msg=error_msg: self.status_var.set(f"错误: {msg}"))
+            self.root.after(0, lambda: messagebox.showerror("错误", f"打开页面失败: {error_msg}"))
+
+    def load_history_cookies(self):
+        """从历史cookies文件加载cookies"""
+        try:
+            history_file = "douyinliveck.txt"
+            if not os.path.exists(history_file):
+                return
+
+            with open(history_file, 'r', encoding='utf-8') as f:
+                cookies_data = json.load(f)
+
+            # 清空现有cookies
+            self.driver.delete_all_cookies()
+
+            # 添加历史cookies
+            for cookie_data in cookies_data:
+                try:
+                    self.driver.add_cookie(cookie_data)
+                except Exception as e:
+                    print(f"添加cookie失败: {e}")
+                    continue
+
+            print(f"已加载 {len(cookies_data)} 个历史cookies")
+        except Exception as e:
+            print(f"加载历史cookies失败: {e}")
+
+    def next_step(self):
+        """用户完成登录后的下一步操作"""
+        try:
+            self.status_var.set("正在采集Cookie...")
+
+            # 在新线程中执行
+            thread = threading.Thread(target=self._collect_cookie_process, daemon=True)
+            thread.start()
+        except Exception as e:
+            messagebox.showerror("错误", f"采集失败: {str(e)}")
+            self.status_var.set("Cookie采集失败")
+
+    def _collect_cookie_process(self):
+        """在后台线程中采集Cookie"""
+        try:
+            # 访问目标页面
+            target_url = "https://www.douyin.com/user/MS4wLjABAAAA0Wk4gxp3AYFnqoqo-IBF6lbdLnrxgjy__DdhPBNBkws"
+            self.driver.get(target_url)
+            time.sleep(5)  # 等待页面加载
+
+            # 获取Cookie
+            cookies = self.driver.get_cookies()
+
+            # 转换为字符串
+            cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+
+            # 关闭浏览器
+            self.driver.quit()
+            self.driver = None
+
+            # 保存到历史文件
+            self.save_cookies_to_history(cookies)
+
+            # 回调返回cookie
+            if self.callback:
+                self.root.after(0, lambda: self.callback(cookie_str))
+            else:
+                self.root.after(0, lambda: messagebox.showinfo("成功", f"Cookie获取成功！\n\n{cookie_str[:100]}..."))
+
+            self.root.after(0, lambda: self.status_var.set("Cookie获取成功"))
+            self.root.after(0, self.root.destroy)
+
+        except Exception as e:
+            error_msg = str(e)
+            self.root.after(0, lambda msg=error_msg: self.status_var.set(f"错误: {msg}"))
+            self.root.after(0, lambda msg=error_msg: messagebox.showerror("错误", f"采集失败: {error_msg}"))
+            if self.driver:
+                self.driver.quit()
+                self.driver = None
+
+    def save_cookies_to_history(self, cookies):
+        """保存cookies到历史文件"""
+        try:
+            with open("douyinliveck.txt", 'w', encoding='utf-8') as f:
+                json.dump(cookies, f, ensure_ascii=False, indent=2)
+            print(f"已保存 {len(cookies)} 个cookies到历史文件")
+        except Exception as e:
+            print(f"保存cookies到历史文件失败: {e}")
+
+    def on_closing(self):
+        """关闭窗口"""
+        if self.driver:
+            try:
+                self.driver.quit()
+            except:
+                pass
+        self.root.destroy()
+
 #---------------------------------以下为录播cookie刷新--------------------------------------
 
 class DouyinCookieRefresher:
@@ -4047,7 +4872,10 @@ class DouyinCookieRefresher:
         self.driver = None
         self.cookie_file = "cookie.txt"
         self.parent = parent  # 保存父窗口引用
-        self.use_history_cookies = tk.BooleanVar(value=False)  # 是否使用历史cookies
+        # 检查历史cookies文件是否存在，设置对勾的默认状态
+        history_file = "douyinliveck.txt"
+        use_history = os.path.exists(history_file)
+        self.use_history_cookies = tk.BooleanVar(value=use_history)  # 是否使用历史cookies
 
         self.setup_ui()
 
@@ -4422,12 +5250,37 @@ except ImportError:
 CONFIG_FILE = "streamer_monitor_config.json"
 LOG_FILE = "monitor.log"
 
-logging.basicConfig(
-    filename=LOG_FILE,
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
+
+def get_daily_log_filename(log_dir="logs"):
+    """获取按天分割的日志文件名"""
+    # 确保日志目录存在
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # 获取当前日期
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    
+    # 生成日志文件名: monitor-YYYY-MM-DD.log
+    return os.path.join(log_dir, f"monitor-{current_date}.log")
+
+
+def setup_logging(enable_daily_split=True, log_dir="logs"):
+    """设置日志配置，支持按天分割"""
+    # 获取日志文件路径
+    if enable_daily_split:
+        log_file = get_daily_log_filename(log_dir)
+    else:
+        log_file = LOG_FILE
+    
+    # 配置logging
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        force=True  # 强制重新配置
+    )
+    
+    return log_file
 
 
 # 添加一个调试用的日志方法
@@ -4444,7 +5297,7 @@ class LiveMonitorApp:
         # 在初始化界面之前检查启动次数并显示开源声明
         if not self.show_opensource_declaration():
             return  # 用户未确认，直接退出程序
-        self.root.title("直播间监控录制助手 v1.0.7[抖音和b站][By.bilibili@真理的中点]")
+        self.root.title("直播间监控录制助手 v1.0.7.2[抖音和b站][By.bilibili@真理的中点]")
         self.root.geometry("1020x720")
 
         # ===== 先初始化所有变量 =====
@@ -4453,7 +5306,8 @@ class LiveMonitorApp:
         self.last_status = {}
         self.streamers = []
         self.douyin_cookie = ""
-        self.auto_cookie_var = tk.BooleanVar(value=True)
+        # 修改为StringVar，支持三种方式：disabled, no_login, login
+        self.auto_cookie_var = tk.StringVar(value="no_login")
         self.aria2_process = None
         self.automations = []
         self.running_auto_tasks = []
@@ -4493,6 +5347,89 @@ class LiveMonitorApp:
         self.aria2_host = tk.StringVar(value="localhost")
         self.aria2_port = tk.StringVar(value="6800")
         self.aria2_secret = tk.StringVar()
+        
+        # Aria2高级配置变量（保持向后兼容的配置）
+        self.aria2_config = {
+            "split": tk.StringVar(value="5"),                         # 下载文件分成几块 (split)
+            "max_connection_per_server": tk.StringVar(value="1"),     # 每个服务器最大连接数 (max-connection-per-server)
+            "max_concurrent_downloads": tk.StringVar(value="5"),      # 最大并发下载数 (max-concurrent-downloads)
+            "min_split_size": tk.StringVar(value="20M"),              # 最小分割大小 (min-split-size) - 改为20M更合理
+            "continue_download": tk.BooleanVar(value=True),           # 是否继续下载 (continue)
+            "timeout": tk.StringVar(value="60"),                      # 超时时间 (timeout)
+            "max_tries": tk.StringVar(value="5"),                     # 最大重试次数 (max-tries)
+            "retry_wait": tk.StringVar(value="0"),                    # 重试等待时间 (retry-wait)
+            "max_overall_download_limit": tk.StringVar(value="0"),    # 整体下载限速 (max-overall-download-limit)
+            "max_download_limit": tk.StringVar(value="0"),            # 单个下载限速 (max-download-limit)
+            "user_agent": tk.StringVar(value=""),                     # 用户代理 (user-agent)
+            "referer": tk.StringVar(value=""),                        # 引用页 (referer)
+            "check_certificate": tk.BooleanVar(value=True),          # 检查SSL证书 (check-certificate)
+            "apply_settings_after_start": tk.BooleanVar(value=True)   # aria2启动后应用这些设置
+        }
+        
+        # Aria2完整配置（用于存储所有配置项）
+        self.aria2_full_config = {
+            # 基础下载设置
+            "split": "5",
+            "max-connection-per-server": "1",
+            "max-concurrent-downloads": "5",
+            "min-split-size": "20M",
+            "timeout": "60",
+            "max-tries": "5",
+            "retry-wait": "0",
+            # 限速设置
+            "max-overall-download-limit": "0",
+            "max-download-limit": "0",
+            "max-overall-upload-limit": "0",
+            "max-upload-limit": "0",
+            # 文件设置
+            "dir": os.path.join(os.getcwd(), "downloads"),
+            "allow-overwrite": "false",
+            "auto-file-renaming": "true",
+            "always-resume": "true",
+            "continue": "true",
+            "file-allocation": "prealloc",
+            # HTTP设置
+            "user-agent": "aria2/1.37.0",
+            "referer": "",
+            "check-certificate": "true",
+            "http-accept-gzip": "false",
+            "enable-http-keep-alive": "true",
+            # BT设置
+            "enable-dht": "true",
+            "enable-peer-exchange": "true",
+            "enable-lpd": "false",
+            "bt-max-peers": "55",
+            "listen-port": "6881-6999",
+            "dht-listen-port": "6881-6999",
+            "seed-ratio": "1.0",
+            "seed-time": "0",
+            # RPC设置
+            "enable-rpc": "true",
+            "rpc-listen-port": "6800",
+            "rpc-secret": "",
+            "rpc-listen-all": "false",
+            "rpc-allow-origin-all": "false",
+            # 网络设置
+            "disable-ipv6": "false",
+            "async-dns": "true",
+            "enable-dht6": "false",
+            "enable-http-pipelining": "false",
+            # 缓存与性能
+            "disk-cache": "16M",
+            "enable-mmap": "false",
+            # 其他设置
+            "input-file": "",
+            "save-session": "",
+            "save-session-interval": "0",
+            "max-resume-failure-tries": "0",
+            "remote-time": "false",
+            "reuse-uri": "true",
+            "no-file-allocation-limit": "5M",
+            "parameterized-uri": "false",
+            "conditional-get": "false",
+            "quiet": "false",
+            "console-log-level": "notice"
+        }
 
         # 监控速度档位（1档为原始速度，数值越大越慢）
         self.monitor_speed_level = tk.IntVar(value=1)
@@ -4515,6 +5452,11 @@ class LiveMonitorApp:
         # 定时调速配置
         # 格式: [{"start": "HH:MM", "end": "HH:MM", "level": 1-5}, ...]
         self.scheduled_speed_periods = []  # 定时调速时段列表
+        
+        # 日志配置变量
+        self.enable_daily_log_split = tk.BooleanVar(value=True)  # 默认启用按天分割日志
+        self.log_directory = os.path.join(get_app_directory(), "logs")  # 日志目录，默认在工作目录/logs路径下
+        self.original_log_file = None  # 原始日志文件路径，用于回退
 
         # ===========================
 
@@ -4576,7 +5518,29 @@ class LiveMonitorApp:
         self.progress_status = None
         self.download_cancelled = False
         self.start_monitoring(suppress_empty_warning=True)
+        
+        # 初始化日志配置（需要在上面的变量初始化之后）
+        self.setup_logging_config()
+        
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+    
+    def setup_logging_config(self):
+        """设置日志配置"""
+        try:
+            # 保存原始日志文件路径
+            self.original_log_file = LOG_FILE
+            
+            # 设置日志
+            log_file = setup_logging(
+                enable_daily_split=self.enable_daily_log_split.get(),
+                log_dir=self.log_directory
+            )
+            
+            # 记录日志配置信息
+            if hasattr(self, 'log_message'):
+                self.log_message(f"日志配置完成: 按天分割={self.enable_daily_log_split.get()}, 日志文件={log_file}")
+        except Exception as e:
+            print(f"设置日志配置失败: {e}")
 
     def set_window_icon(self):
         """设置窗口图标 - 安全版本，不依赖log_message"""
@@ -4727,7 +5691,7 @@ class LiveMonitorApp:
 请用户认准正版渠道：
 github仓库地址：https://github.com/Refrain365/LiveMonitorAndRecorder
 gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
-1.0.7版本正版指定蓝奏云地址：https://wwamm.lanzouv.com/b014x0j3ah 提取码见发行版说明
+1.0.7.2版本正版指定蓝奏云地址：https://wwamm.lanzouv.com/b014x0j3ah 提取码见发行版说明
 首次启动没有此弹窗的，或者是弹窗内容被恶意篡改的，都不是官方发行版！
 开发者不会为使用了非官方发行版的用户承担任何责任。
 本程序作者：bilibili@真理的中点"""
@@ -5041,10 +6005,22 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                         else:
                             cfg = {}
                         cfg["edgedriver_first_download_done"] = True
+                        
+                        # 记录下载时间戳和版本
+                        import datetime
+                        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        cfg["edgedriver_last_download_time"] = current_time
+                        cfg["edgedriver_last_download_version"] = version
+                        
+                        # 更新次数计数器
+                        if "edgedriver_update_count" not in cfg:
+                            cfg["edgedriver_update_count"] = 0
+                        cfg["edgedriver_update_count"] += 1
+                        
                         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
                             json.dump(cfg, f, ensure_ascii=False, indent=2)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        self.log_message(f"记录下载状态失败: {e}", "warning")
                     return True
                 else:
                     try:
@@ -5061,11 +6037,84 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             self.log_message(f"解压文件失败: {e}", "error")
             return False
 
+    # 新增方法：检查是否是需要更新而非首次安装
+    def is_edgedriver_update(self):
+        """检查是否是更新（非首次安装）"""
+        try:
+            if not os.path.exists(self.edgedriver_path):
+                return False  # 文件不存在，说明是首次安装
+            
+            # 检查配置是否记录过驱动下载
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                    cfg = json.load(f) or {}
+                # 如果已经记录过首次下载，说明现在可能是更新
+                if cfg.get("edgedriver_first_download_done", False):
+                    return True
+            return False
+        except Exception:
+            return False
+    
+    # 新增方法：询问是否恢复备份
+    def ask_restore_on_failure(self, error, backup_path):
+        """在更新失败时询问用户是否恢复备份"""
+        try:
+            from tkinter import messagebox
+            
+            response = messagebox.askyesno(
+                "Edge WebDriver 更新失败",
+                f"Edge WebDriver 初始化失败：{str(error)}\n\n"
+                f"检测到存在备份文件，是否恢复到上一个可用版本？\n\n"
+                f"请注意：\n"
+                f"- 恢复备份会将浏览器驱动回退到上一个版本\n"
+                f"- 如果您希望手动处理，可以选择否，然后通过【用户环境变量检测】页面进行恢复\n"
+                f"- 备份文件路径：{backup_path}",
+                parent=self.root
+            )
+            
+            if response:
+                # 用户选择恢复备份
+                try:
+                    import shutil
+                    shutil.copy2(backup_path, self.edgedriver_path)
+                    self.log_message("已从备份恢复EdgeDriver（用户确认恢复）")
+                    
+                    # 再次尝试初始化
+                    self.root.after(1000, self.retry_edgedriver_init)
+                    
+                except Exception as restore_error:
+                    messagebox.showerror("恢复失败", f"恢复备份失败: {str(restore_error)}", parent=self.root)
+                    self.log_message(f"恢复备份失败: {restore_error}", "error")
+            else:
+                # 用户选择不恢复
+                self.log_message("用户选择不恢复备份，请检查Edge浏览器和WebDriver版本", "warning")
+                messagebox.showinfo("更新失败", 
+                    "Edge WebDriver 更新失败，需要手动处理。\n\n"
+                    "您可以：\n"
+                    "1. 检查Edge浏览器版本并升级或降级\n"
+                    "2. 通过【用户环境变量检测】页面手动恢复备份\n"
+                    "3. 手动下载正确的WebDriver版本", 
+                    parent=self.root)
+        except Exception as e:
+            self.log_message(f"询问恢复备份失败: {e}", "error")
+    
+    # 新增方法：重试edgedriver初始化
+    def retry_edgedriver_init(self):
+        """重试edgedriver初始化"""
+        try:
+            self.log_message("开始重试Edge WebDriver初始化...")
+            self.init_edgedriver()
+        except Exception as e:
+            self.log_message(f"重试初始化失败: {e}", "error")
+
     # 修改 init_edgedriver 方法
     # 在LiveMonitorApp类中修改init_edgedriver方法
     def init_edgedriver(self):
         app_dir = get_app_directory()
         self.edgedriver_path = os.path.join(app_dir, "msedgedriver.exe")
+        
+        # 清除之前的更新状态
+        self.is_update_case = False
 
         try:
             self.current_edge_version = self.get_edge_version()
@@ -5100,6 +6149,10 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
 
             # 如果版本不匹配或文件不存在，继续下载流程
             if actual_version != self.current_edge_version:
+                old_version = actual_version if actual_version else "未知"
+                is_update_case = self.is_edgedriver_update()
+                self.is_update_case = is_update_case  # 保存为对象属性，供异常处理使用
+                
                 if os.path.exists(self.edgedriver_path):
                     # 创建备份
                     backup_path = self.edgedriver_path + ".bak"
@@ -5127,15 +6180,20 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
 
         except Exception as e:
             self.log_message(f"初始化EdgeDriver失败: {e}", "error")
-
-            # 尝试恢复备份
+            
+            # 检查是否存在备份文件
             backup_path = self.edgedriver_path + ".bak"
             if os.path.exists(backup_path):
+                # 仅在初始化的异常信息中说明有备份可用
+                self.log_message("检测到备份文件存在，可通过【用户环境变量检测】页面恢复", "info")
+                
+                # 如果是在更新过程中失败（而不是首次安装），询问用户是否恢复
                 try:
-                    shutil.copy2(backup_path, self.edgedriver_path)
-                    self.log_message("已从备份恢复EdgeDriver")
-                except Exception as backup_error:
-                    self.log_message(f"恢复备份失败: {backup_error}", "error")
+                    if hasattr(self, 'is_update_case') and getattr(self, 'is_update_case', False):
+                        # 稍后显示恢复询问窗口（避免在初始化过程中阻塞）
+                        self.root.after(2000, lambda: self.ask_restore_on_failure(e, backup_path))
+                except Exception:
+                    pass
 
     def delayed_startup(self):
         """延迟启动各项服务 - 修复重复启动问题"""
@@ -5581,14 +6639,41 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
 
         cookie_frame = ttk.LabelFrame(self.notify_tab, text="抖音 Cookie 设置")
         cookie_frame.pack(fill=tk.X, padx=10, pady=5)
-        ttk.Checkbutton(cookie_frame, text="启动时自动获取抖音 Cookie（需要 Edge 浏览器驱动）",
-                        variable=self.auto_cookie_var).pack(anchor=tk.W, padx=5, pady=3)
+
+        # 自动获取Cookie设置
+        auto_cookie_label_frame = ttk.Frame(cookie_frame)
+        auto_cookie_label_frame.pack(anchor=tk.W, padx=5, pady=3)
+        ttk.Label(auto_cookie_label_frame, text="启动时自动获取方式:").pack(side=tk.LEFT, padx=5)
+
+        # 下拉选择框
+        auto_cookie_combo = ttk.Combobox(auto_cookie_label_frame, textvariable=self.auto_cookie_var,
+                                          values=("不自动获取", "不登录获得Cookie", "登录获得Cookie"),
+                                          state="readonly", width=20)
+        auto_cookie_combo.pack(side=tk.LEFT, padx=5)
+
+        # 绑定选择变化事件
+        auto_cookie_combo.bind("<<ComboboxSelected>>", self.on_auto_cookie_mode_changed)
+
+        # 检测历史cookies文件是否存在
+        history_file = "douyinliveck.txt"
+        history_exists = os.path.exists(history_file)
+
+        # 登录获得Cookie的提示
+        login_cookie_hint = ttk.Label(cookie_frame,
+                                      text=f"注意：'登录获得Cookie'需要工作目录下有历史Cookie文件{'（已检测到）' if history_exists else '（未检测到，此选项不可用）'}",
+                                      foreground="green" if history_exists else "red",
+                                      font=("Arial", 9))
+        login_cookie_hint.pack(anchor=tk.W, padx=5, pady=2)
+
+        # 保存提示标签引用
+        self.login_cookie_hint = login_cookie_hint
+
         ttk.Label(cookie_frame, text="当前 Cookie:").pack(anchor=tk.W, padx=5, pady=3)
         self.cookie_display = tk.Text(cookie_frame, height=3, wrap=tk.WORD)
         self.cookie_display.pack(fill=tk.X, padx=5, pady=3)
         cookie_btn_frame = ttk.Frame(cookie_frame)
         cookie_btn_frame.pack(anchor=tk.W, padx=5, pady=3)
-        ttk.Button(cookie_frame, text="手动填写监控Cookie", command=self.manual_input_cookie).pack(side=tk.LEFT, padx=5)
+        ttk.Button(cookie_frame, text="刷新监控Cookie", command=self.refresh_monitor_cookie).pack(side=tk.LEFT, padx=5)
         ttk.Button(cookie_frame, text="刷新录播Cookie", command=self.refresh_record_cookie).pack(side=tk.LEFT, padx=5)
         help_frame = ttk.Frame(self.notify_tab)
         help_frame.pack(fill=tk.X, padx=10, pady=10)
@@ -5901,9 +6986,10 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         conn_frame = ttk.LabelFrame(self.record_tab, text="Aria2连接设置")
         conn_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        # 新增：自动启动复选框
+        # 新增：自动启动复选框和设置按钮
         ttk.Checkbutton(conn_frame, text="启用aria2自动启动和连接",
                         variable=self.auto_start_aria2_var).grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        ttk.Button(conn_frame, text="aria2设置", command=self.open_aria2_settings).grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
 
         ttk.Label(conn_frame, text="主机:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
         self.aria2_host = tk.StringVar(value="localhost")
@@ -5993,6 +7079,29 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 foreground="red"
             )
             warning_label.pack(padx=10, pady=5)
+    
+    def open_aria2_settings(self):
+        """打开Aria2 WebUI设置页面（使用默认浏览器打开HTML文件）"""
+        try:
+            # 获取HTML文件的绝对路径
+            html_path = os.path.join(os.getcwd(), "aria2setting.html")
+            
+            if not os.path.exists(html_path):
+                messagebox.showwarning("文件未找到", 
+                    f"找不到Aria2 WebUI设置页面:\n{html_path}\n\n请确保aria2setting.html文件存在于程序目录中。")
+                return
+            
+          
+            
+            # 使用默认浏览器打开HTML文件
+            import webbrowser
+            # 构造完整的file:// URL
+            url = f"file:///{html_path.replace('\\', '/')}"
+            webbrowser.open(url)
+            self.log_message(f"已打开Aria2 WebUI设置页面: {html_path}")
+            
+        except Exception as e:
+            messagebox.showerror("错误", f"打开Aria2设置页面失败: {e}")
 
     def open_record_wizard(self):
         """打开录播任务向导"""
@@ -6589,6 +7698,16 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             self.status_var.set(message)
 
     def _setup_log_tab(self):
+        # 日志配置区域
+        config_frame = ttk.LabelFrame(self.log_tab, text="日志配置")
+        config_frame.pack(fill=tk.X, padx=10, pady=(10, 5))
+        
+        # 日志分割选项
+        ttk.Checkbutton(config_frame, text="启用按天分割日志文件（日志默认存放在工作目录/logs路径下）", 
+                        variable=self.enable_daily_log_split,
+                        command=self.update_logging_config).pack(anchor=tk.W, padx=10, pady=5)
+        
+        # 日志显示区域
         log_frame = ttk.Frame(self.log_tab)
         log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD)
@@ -6600,7 +7719,24 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         ttk.Button(btn_frame, text="清空日志", command=self.clear_log).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="导出日志", command=self.export_log).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="查看日志文件", command=self.open_log_file).pack(side=tk.RIGHT, padx=5)
-
+    
+    def update_logging_config(self):
+        """更新日志配置"""
+        try:
+            # 重新设置日志配置
+            log_file = setup_logging(
+                enable_daily_split=self.enable_daily_log_split.get(),
+                log_dir=self.log_directory
+            )
+            
+            # 记录配置变更
+            self.log_message(f"日志配置已更新: 按天分割={self.enable_daily_log_split.get()}, 日志文件={log_file}")
+            
+            # 保存设置到配置
+            self.save_config()
+        except Exception as e:
+            self.log_message(f"更新日志配置失败: {e}", "error")
+    
     def clear_log(self):
         self.log_text.config(state=tk.NORMAL)
         self.log_text.delete(1.0, tk.END)
@@ -6619,16 +7755,28 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 self.log_message(f"导出日志失败: {e}", "error")
 
     def open_log_file(self):
-        if os.path.exists(LOG_FILE):
-            try:
-                os.startfile(LOG_FILE)
-            except:
+        """打开当前日志文件"""
+        try:
+            # 获取当前日志文件路径
+            if self.enable_daily_log_split.get():
+                log_file = get_daily_log_filename(self.log_directory)
+            else:
+                log_file = LOG_FILE
+            
+            # 检查日志文件是否存在
+            if os.path.exists(log_file):
                 try:
-                    subprocess.call(["open", LOG_FILE])
+                    os.startfile(log_file)
+                    self.log_message(f"已打开日志文件: {os.path.basename(log_file)}")
                 except:
-                    subprocess.call(["xdg-open", LOG_FILE])
-        else:
-            self.log_message("日志文件不存在", "warning")
+                    try:
+                        subprocess.call(["open", log_file])
+                    except:
+                        subprocess.call(["xdg-open", log_file])
+            else:
+                self.log_message(f"日志文件不存在: {log_file}", "warning")
+        except Exception as e:
+            self.log_message(f"打开日志文件失败: {e}", "error")
 
     # ------------------ 自动化 ------------------
     def _setup_auto_tab(self):
@@ -7845,6 +8993,12 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                     else:
                         is_live = self.check_douyin_live(streamer["id"])
                         time.sleep(every_sleep)
+
+                    # 如果检查失败（is_live为None），不更新状态，避免频繁触发自动化任务
+                    if is_live is None:
+                        self.log_message(f"未获取到 {streamer['name']} 的最新直播状态，保持原状态不变", "warning")
+                        continue
+
                     # 在这里添加时间更新
                     current_time = datetime.now().strftime("%H:%M:%S")
                     streamer["last_check_time"] = current_time
@@ -7900,7 +9054,7 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             return res.get("code") == 0 and res.get("data", {}).get("live_status") == 1
         except Exception as e:
             self.log_message(f"检查哔哩哔哩直播状态出错: {e}", "error")
-            return False
+            return None  # 返回None表示检查失败，不更新状态
 
     def check_douyin_live(self, url):
         try:
@@ -7908,7 +9062,7 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Cookie": self.douyin_cookie
             }
-            res = requests.get(url, headers=headers, timeout=10)
+            res = requests.get(url, headers=headers, timeout=15)
             res.encoding = 'utf-8'
             m = re.search(r'"live_status":(\d)', res.text)
             if m:
@@ -7916,7 +9070,7 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             return "直播中" in res.text
         except Exception as e:
             self.log_message(f"检查抖音直播状态出错: {e}", "error")
-            return False
+            return None  # 返回None表示检查失败，不更新状态
 
     # ------------------ 通知 ------------------
     def send_wxpusher_notification(self, title, content):
@@ -8020,36 +9174,67 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
 
     # ------------------ Cookie 获取 ------------------
     def maybe_auto_get_douyin_cookie(self):
-        if not self.auto_cookie_var.get():
-            self.log_message("自动获取抖音 Cookie 已关闭")
+        """启动时自动获取抖音Cookie"""
+        mode = self.auto_cookie_var.get()
+
+        if mode == "不自动获取":
+            self.log_message("启动时自动获取 Cookie 已关闭")
             return
+
         if not SELENIUM_OK:
             self.log_message("未安装最新版本的selenium，跳过自动获取 Cookie")
             self.log_message("请安装最新版本的selenium(pip install selenium)以正常使用自动获取 Cookie")
             return
-        threading.Thread(target=self.auto_get_douyin_cookie, daemon=True).start()
 
-    def auto_get_douyin_cookie(self):
+        threading.Thread(target=self.auto_get_douyin_cookie, daemon=True, args=(mode,)).start()
+
+    def auto_get_douyin_cookie(self, mode="不登录获得Cookie"):
+        """自动获取抖音Cookie"""
+        if mode == "不登录获得Cookie":
+            self._auto_get_cookie_no_login()
+        elif mode == "登录获得Cookie":
+            self._auto_get_cookie_with_login()
+        else:
+            # 默认使用不登录模式
+            self._auto_get_cookie_no_login()
+
+    def _auto_get_cookie_no_login(self):
+        """不登录获得Cookie（直接访问目标页面）"""
         try:
-            self.log_message("正在自动获取抖音 Cookie...")
+            from selenium.webdriver.edge.options import Options as EdgeOptions
+            from selenium.webdriver.edge.webdriver import WebDriver as Edge
+
             options = EdgeOptions()
             options.use_chromium = True
-            # 使用非Headless模式，让用户手动登录
-            # options.add_argument("headless")  # 注释掉headless模式
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--no-sandbox")
 
             driver = Edge(options=options)
-            # 访问抖音登录页面
-            driver.get("https://www.douyin.com/user/MS4wLjABAAAA0Wk4gxp3AYFnqoqo-IBF6lbdLnrxgjy__DdhPBNBkws")
-            time.sleep(15)
 
-            # 获取登录后的Cookie
+            self.log_message("正在使用'不登录获得Cookie'方式获取抖音 Cookie...")
+
+            # 直接访问目标页面
+            target_url = "https://www.douyin.com/user/MS4wLjABAAAA0Wk4gxp3AYFnqoqo-IBF6lbdLnrxgjy__DdhPBNBkws"
+            self.log_message(f"正在访问页面: {target_url}")
+            driver.get(target_url)
+            time.sleep(10)  # 等待页面加载
+
+            # 获取Cookie
             cookies = driver.get_cookies()
+            self.log_message(f"已采集 {len(cookies)} 个cookies")
+
+            # 关闭浏览器
             driver.quit()
 
+            # 转换为字符串
             cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+
+            # 更新UI
             self.douyin_cookie = cookie_str
-            self.root.after(0, lambda: self.cookie_display.delete(1.0, tk.END))
-            self.root.after(0, lambda: self.cookie_display.insert(1.0, cookie_str))
+            if hasattr(self, 'cookie_display'):
+                self.root.after(0, lambda: self.cookie_display.delete(1.0, tk.END))
+                self.root.after(0, lambda: self.cookie_display.insert(1.0, cookie_str))
 
             self.log_message("抖音 Cookie 获取成功")
             self.save_config()
@@ -8059,14 +9244,207 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 "Cookie 获取失败",
                 f"自动获取抖音 Cookie 失败: {e}\n请手动填写或留空"))
 
-    def manual_input_cookie(self):
-        cookie = simpledialog.askstring("手动填写 Cookie", "请输入抖音 Cookie：")
-        if cookie is not None:
-            self.douyin_cookie = cookie
-            self.cookie_display.delete(1.0, tk.END)
-            self.cookie_display.insert(1.0, cookie)
+    def _auto_get_cookie_with_login(self):
+        """登录获得Cookie（像获得录播cookies那样的流程）"""
+        try:
+            from selenium.webdriver.edge.options import Options as EdgeOptions
+            from selenium.webdriver.edge.webdriver import WebDriver as Edge
+
+            options = EdgeOptions()
+            options.use_chromium = True
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--no-sandbox")
+
+            driver = Edge(options=options)
+
+            self.log_message("正在使用'登录获得Cookie'方式获取抖音 Cookie...")
+
+            # 先访问个人主页以设置cookie域
+            profile_url = "https://www.douyin.com/user/self"
+            self.log_message(f"正在访问个人主页: {profile_url}")
+            driver.get(profile_url)
+
+            # 加载历史cookies
+            history_file = "douyinliveck.txt"
+            if os.path.exists(history_file):
+                try:
+                    with open(history_file, 'r', encoding='utf-8') as f:
+                        cookies_data = json.load(f)
+
+                    # 清空现有cookies
+                    driver.delete_all_cookies()
+
+                    # 添加历史cookies
+                    for cookie_data in cookies_data:
+                        try:
+                            driver.add_cookie(cookie_data)
+                        except Exception:
+                            continue
+
+                    self.log_message(f"已加载 {len(cookies_data)} 个历史cookies")
+                except Exception as e:
+                    self.log_message(f"加载历史cookies失败: {e}，将继续尝试获取Cookie", "warning")
+            else:
+                self.log_message("未找到历史cookies文件，将尝试无登录方式获取Cookie", "warning")
+
+            # 再次访问个人主页让cookies生效
+            self.log_message("再次访问个人主页以激活登录状态...")
+            driver.get(profile_url)
+            time.sleep(5)  # 等待页面加载和cookies生效
+
+            # 访问目标页面
+            target_url = "https://www.douyin.com/user/MS4wLjABAAAA0Wk4gxp3AYFnqoqo-IBF6lbdLnrxgjy__DdhPBNBkws"
+            self.log_message(f"正在访问目标页面: {target_url}")
+            driver.get(target_url)
+            time.sleep(10)  # 等待页面加载
+
+            # 获取Cookie
+            cookies = driver.get_cookies()
+            self.log_message(f"已采集 {len(cookies)} 个cookies")
+
+            # 关闭浏览器
+            driver.quit()
+
+            # 转换为字符串
+            cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+
+            # 保存到历史文件
+            try:
+                with open("douyinliveck.txt", 'w', encoding='utf-8') as f:
+                    json.dump(cookies, f, ensure_ascii=False, indent=2)
+                self.log_message(f"已保存 {len(cookies)} 个cookies到历史文件")
+            except Exception as e:
+                self.log_message(f"保存cookies到历史文件失败: {e}", "warning")
+
+            # 更新UI
+            self.douyin_cookie = cookie_str
+            if hasattr(self, 'cookie_display'):
+                self.root.after(0, lambda: self.cookie_display.delete(1.0, tk.END))
+                self.root.after(0, lambda: self.cookie_display.insert(1.0, cookie_str))
+
+            self.log_message("抖音 Cookie 获取成功")
             self.save_config()
-            self.log_message("已手动更新抖音 Cookie")
+        except Exception as e:
+            self.log_message(f"自动获取抖音 Cookie 失败: {e}", "error")
+            self.root.after(0, lambda: messagebox.showwarning(
+                "Cookie 获取失败",
+                f"自动获取抖音 Cookie 失败: {e}\n请手动填写或留空"))
+
+    def on_auto_cookie_mode_changed(self, event=None):
+        """自动获取Cookie模式变化时的处理"""
+        mode = self.auto_cookie_var.get()
+        history_file = "douyinliveck.txt"
+        history_exists = os.path.exists(history_file)
+
+        if mode == "登录获得Cookie" and not history_exists:
+            # 如果选择了登录获得Cookie但文件不存在，自动切换回不登录获得Cookie
+            self.auto_cookie_var.set("不登录获得Cookie")
+            messagebox.showwarning("警告", "工作目录下未找到 douyinliveck.txt 文件，无法使用'登录获得Cookie'方式。\n\n已自动切换到'不登录获得Cookie'方式。")
+
+        # 更新提示文本
+        if hasattr(self, 'login_cookie_hint'):
+            current_exists = os.path.exists(history_file)
+            self.login_cookie_hint.config(
+                text=f"注意：'登录获得Cookie'需要工作目录下有历史Cookie文件{'（已检测到）' if current_exists else '（未检测到，此选项不可用）'}",
+                foreground="green" if current_exists else "red"
+            )
+
+    def refresh_monitor_cookie(self):
+        """刷新监控Cookie"""
+        dialog = MonitorCookieRefreshDialog(self.root, self._on_cookie_refresh_method_selected)
+
+    def _on_cookie_refresh_method_selected(self, method):
+        """处理选择的Cookie刷新方法"""
+        if method == "method1":
+            # 方法一：使用auto_get_douyin_cookie（不登录模式）
+            self.auto_get_douyin_cookie("不登录获得Cookie")
+        elif method == "method2":
+            # 方法二：打开监控Cookie刷新器
+            cookie_refresher = MonitorCookieRefresher(self.root, self._apply_monitor_cookie)
+            cookie_refresher.root.transient(self.root)
+            cookie_refresher.root.grab_set()
+        elif method == "method3":
+            # 方法三：手动填写Cookie（支持滚动）
+            self.manual_input_cookie_with_scroll()
+
+    def manual_input_cookie_with_scroll(self):
+        """手动填写Cookie（支持滚动的大输入框）"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("手动填写Cookie")
+        dialog.geometry("700x500")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        # 居中显示
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (700 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (500 // 2)
+        dialog.geometry(f"700x500+{x}+{y}")
+
+        # 主框架
+        main_frame = ttk.Frame(dialog, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # 说明标签
+        ttk.Label(main_frame, text="请输入抖音 Cookie：",
+                 font=("Arial", 12)).pack(pady=10)
+
+        # Cookie输入框（带滚动）
+        cookie_frame = ttk.Frame(main_frame)
+        cookie_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        scrollbar = ttk.Scrollbar(cookie_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        cookie_text = tk.Text(cookie_frame, wrap=tk.WORD, yscrollcommand=scrollbar.set,
+                             height=20, font=("Consolas", 10))
+        cookie_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        scrollbar.config(command=cookie_text.yview)
+
+        # 如果有现有cookie，显示出来
+        if self.douyin_cookie:
+            cookie_text.insert(1.0, self.douyin_cookie)
+
+        # 按钮框架
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=10)
+
+        def on_confirm():
+            cookie_value = cookie_text.get(1.0, tk.END).strip()
+            if cookie_value:
+                self.douyin_cookie = cookie_value
+                if hasattr(self, 'cookie_display'):
+                    self.cookie_display.delete(1.0, tk.END)
+                    self.cookie_display.insert(1.0, cookie_value)
+                self.save_config()
+                self.log_message("已手动更新监控Cookie")
+                dialog.destroy()
+                messagebox.showinfo("成功", "监控Cookie已更新")
+            else:
+                messagebox.showwarning("警告", "Cookie不能为空")
+
+        def on_cancel():
+            dialog.destroy()
+
+        ttk.Button(button_frame, text="确认", command=on_confirm).pack(side=tk.LEFT, padx=10)
+        ttk.Button(button_frame, text="取消", command=on_cancel).pack(side=tk.LEFT, padx=10)
+
+    def _apply_monitor_cookie(self, cookie_str):
+        """应用监控Cookie"""
+        if cookie_str:
+            self.douyin_cookie = cookie_str
+            if hasattr(self, 'cookie_display'):
+                self.cookie_display.delete(1.0, tk.END)
+                self.cookie_display.insert(1.0, cookie_str)
+            self.save_config()
+            self.log_message("监控Cookie已更新")
+
+    def manual_input_cookie(self):
+        """保留旧方法名称用于向后兼容"""
+        self.manual_input_cookie_with_scroll()
 
     # ------------------ 配置 ------------------
     def load_config(self):
@@ -8082,13 +9460,41 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                         cfg['launch_count'] = self.launch_count
                     self.app_token.set(cfg.get("app_token", ""))
                     self.user_id.set(cfg.get("user_id", ""))
-                    self.streamers = cfg.get("streamers", [])
+
+                    # 加载streamers，但保留内存中的实时状态
+                    new_streamers = cfg.get("streamers", [])
+
+                    # 如果内存中已有streamers且正在监控，保留实时状态
+                    if hasattr(self, 'streamers') and self.streamers and self.monitoring:
+                        # 创建name到内存中streamer的映射
+                        existing_streamers_map = {s.get('name'): s for s in self.streamers}
+
+                        # 合并：用新配置的streamer列表，但保留内存中的status和last_check_time
+                        for new_streamer in new_streamers:
+                            name = new_streamer.get('name')
+                            if name in existing_streamers_map:
+                                existing = existing_streamers_map[name]
+                                # 保留实时状态
+                                new_streamer['status'] = existing.get('status', '未开播')
+                                new_streamer['last_check_time'] = existing.get('last_check_time', '')
+
+                    self.streamers = new_streamers
+
                     # 为旧版本的主播添加monitor_enabled字段（默认为True）
                     for streamer in self.streamers:
                         if "monitor_enabled" not in streamer:
                             streamer["monitor_enabled"] = True
                     self.douyin_cookie = cfg.get("douyin_cookie", "")
-                    self.auto_cookie_var.set(cfg.get("auto_cookie", True))
+
+                    # 兼容旧版本的auto_cookie配置（Boolean -> String）
+                    auto_cookie_value = cfg.get("auto_cookie", True)
+                    if isinstance(auto_cookie_value, bool):
+                        # 旧版本：True -> "no_login", False -> "不自动获取"
+                        self.auto_cookie_var.set("no_login" if auto_cookie_value else "不自动获取")
+                    else:
+                        # 新版本：直接使用字符串值
+                        self.auto_cookie_var.set(auto_cookie_value if auto_cookie_value in ["不自动获取", "不登录获得Cookie", "登录获得Cookie"] else "no_login")
+
                     self.automations = cfg.get("automations", [])
 
                     # 为旧的自动化任务添加auto_start字段（默认为True）
@@ -8117,6 +9523,67 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                     except Exception:
                         self.monitor_speed_level.set(1)
                     
+                    # 加载Aria2高级配置
+                    aria2_config_data = cfg.get("aria2_config", {})
+                    if aria2_config_data:
+                        # 从配置文件加载配置（向后兼容）
+                        self.aria2_config["split"].set(aria2_config_data.get("split", "5"))
+                        self.aria2_config["max_connection_per_server"].set(aria2_config_data.get("max_connection_per_server", "1"))
+                        self.aria2_config["max_concurrent_downloads"].set(aria2_config_data.get("max_concurrent_downloads", "5"))
+                        self.aria2_config["min_split_size"].set(aria2_config_data.get("min_split_size", "1M"))
+                        self.aria2_config["timeout"].set(aria2_config_data.get("timeout", "60"))
+                        self.aria2_config["max_tries"].set(aria2_config_data.get("max_tries", "5"))
+                        self.aria2_config["retry_wait"].set(aria2_config_data.get("retry_wait", "0"))
+                        self.aria2_config["max_overall_download_limit"].set(aria2_config_data.get("max_overall_download_limit", "0"))
+                        self.aria2_config["max_download_limit"].set(aria2_config_data.get("max_download_limit", "0"))
+                        self.aria2_config["user_agent"].set(aria2_config_data.get("user_agent", ""))
+                        self.aria2_config["referer"].set(aria2_config_data.get("referer", ""))
+                        self.aria2_config["check_certificate"].set(aria2_config_data.get("check_certificate", True))
+                        self.aria2_config["continue_download"].set(aria2_config_data.get("continue_download", True))
+                        self.aria2_config["apply_settings_after_start"].set(aria2_config_data.get("apply_settings_after_start", True))
+                        
+                        # 同步到aria2_full_config（确保向后兼容）
+                        # 映射旧键名到新键名
+                        key_mapping = {
+                            "split": "split",
+                            "max_connection_per_server": "max-connection-per-server",
+                            "max_concurrent_downloads": "max-concurrent-downloads",
+                            "min_split_size": "min-split-size",
+                            "continue_download": "continue",
+                            "timeout": "timeout",
+                            "max_tries": "max-tries",
+                            "retry_wait": "retry-wait",
+                            "max_overall_download_limit": "max-overall-download-limit",
+                            "max_download_limit": "max-download-limit",
+                            "user_agent": "user-agent",
+                            "referer": "referer",
+                            "check_certificate": "check-certificate",
+                            "apply_settings_after_start": "apply-settings-after-start"
+                        }
+                        
+                        for old_key, new_key in key_mapping.items():
+                            if old_key in aria2_config_data:
+                                value = aria2_config_data[old_key]
+                                if isinstance(value, bool):
+                                    self.aria2_full_config[new_key] = "true" if value else "false"
+                                else:
+                                    self.aria2_full_config[new_key] = str(value)
+
+                    # 加载aria2_full_config（完整配置）
+                    aria2_full_config_data = cfg.get("aria2_full_config", {})
+                    if aria2_full_config_data:
+                        for key, value in aria2_full_config_data.items():
+                            if isinstance(value, bool):
+                                self.aria2_full_config[key] = "true" if value else "false"
+                            else:
+                                self.aria2_full_config[key] = str(value)
+
+                    # 加载日志配置
+                    self.enable_daily_log_split.set(cfg.get("enable_daily_log_split", True))
+                    log_dir = cfg.get("log_directory")
+                    if log_dir and os.path.isdir(log_dir):
+                        self.log_directory = log_dir
+
                     # 加载勿扰/休眠时段和定时调速配置
                     self.do_not_disturb_periods = cfg.get("do_not_disturb_periods", [])
                     self.sleep_periods = cfg.get("sleep_periods", [])
@@ -8220,6 +9687,22 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
 
     def save_config(self):
         try:
+            # 在保存配置前，先从Treeview同步最新的status和last_check_time到self.streamers
+            # 这确保监控循环中更新的状态能正确保存
+            for item in self.streamer_tree.get_children():
+                values = self.streamer_tree.item(item, "values")
+                if len(values) >= 6:  # 确保有足够的列
+                    name = values[1]  # 主播名称在第2列（索引1）
+                    status = values[5]  # 状态在第6列（索引5）
+                    last_check_time = values[6] if len(values) > 6 else ""  # 检查时间在第7列（索引6）
+
+                    # 更新self.streamers中的对应数据
+                    for streamer in self.streamers:
+                        if streamer["name"] == name:
+                            streamer["status"] = status
+                            streamer["last_check_time"] = last_check_time
+                            break
+
             # 读取现有配置，保留可能的外部写入字段（如 detected_windows_major 等）
             persisted = {}
             if os.path.exists(CONFIG_FILE):
@@ -8262,6 +9745,31 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 "do_not_disturb_periods": getattr(self, 'do_not_disturb_periods', []),
                 "sleep_periods": getattr(self, 'sleep_periods', []),
                 "scheduled_speed_periods": getattr(self, 'scheduled_speed_periods', []),
+                
+                # Aria2高级配置（向后兼容）
+                "aria2_config": {
+                    "split": self.aria2_config["split"].get(),
+                    "max_connection_per_server": self.aria2_config["max_connection_per_server"].get(),
+                    "max_concurrent_downloads": self.aria2_config["max_concurrent_downloads"].get(),
+                    "min_split_size": self.aria2_config["min_split_size"].get(),
+                    "timeout": self.aria2_config["timeout"].get(),
+                    "max_tries": self.aria2_config["max_tries"].get(),
+                    "retry_wait": self.aria2_config["retry_wait"].get(),
+                    "max_overall_download_limit": self.aria2_config["max_overall_download_limit"].get(),
+                    "max_download_limit": self.aria2_config["max_download_limit"].get(),
+                    "user_agent": self.aria2_config["user_agent"].get(),
+                    "referer": self.aria2_config["referer"].get(),
+                    "check_certificate": self.aria2_config["check_certificate"].get(),
+                    "continue_download": self.aria2_config["continue_download"].get(),
+                    "apply_settings_after_start": self.aria2_config["apply_settings_after_start"].get()
+                },
+                
+                # Aria2完整配置（新增）
+                "aria2_full_config": self.aria2_full_config,
+                
+                # 日志配置
+                "enable_daily_log_split": self.enable_daily_log_split.get(),
+                "log_directory": self.log_directory,
             }
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=2)
@@ -8301,6 +9809,18 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
 
             # 停止监控
             self.monitoring = False
+
+            # 等待监控线程结束，确保监控循环完成当前轮次后再保存配置
+            if hasattr(self, 'monitor_thread') and self.monitor_thread and self.monitor_thread.is_alive():
+                self.log_message("正在等待监控线程结束...")
+                # 等待最多3秒让监控线程正常退出
+                for i in range(30):
+                    if not self.monitor_thread.is_alive():
+                        self.log_message("监控线程已结束")
+                        break
+                    time.sleep(0.1)
+                else:
+                    self.log_message("监控线程超时未退出，将继续执行关闭操作", "warning")
 
             # 停止Aria2监控
             self.stop_aria2_monitoring()
@@ -9061,80 +10581,163 @@ class MonitorWizardWindow:
             self.next_btn.config(state=tk.NORMAL)
 
     def get_monitor_cookie(self):
-        """获取监控cookie"""
+        """获取监控cookie - 使用新的刷新方式选择对话框"""
         if not self.app:
             messagebox.showerror("错误", "无法访问主应用程序")
             return
 
         # 禁用按钮
         self.get_cookie_btn.config(state=tk.DISABLED)
-        self.cookie_status_label.config(text="正在获取cookie，请稍候...", foreground="blue")
+        self.cookie_status_label.config(text="请选择Cookie获取方式...", foreground="blue")
 
-        # 在新线程中执行获取cookie的操作
-        def get_cookie_thread():
-            try:
-                # 调用app的自动获取cookie方法
-                if hasattr(self.app, 'auto_get_douyin_cookie'):
-                    # 需要检查selenium是否可用
-                    try:
-                        from selenium.webdriver.edge.options import Options as EdgeOptions
-                        from selenium.webdriver.edge.webdriver import WebDriver as Edge
-                    except ImportError:
-                        self.root.after(0, lambda: messagebox.showerror(
-                            "错误", "未安装selenium库！\n\n请先安装: pip install selenium"))
-                        self.root.after(0, lambda: self.get_cookie_btn.config(state=tk.NORMAL))
-                        self.root.after(0, lambda: self.cookie_status_label.config(
-                            text="获取失败：未安装selenium", foreground="red"))
-                        return
+        # 显示Cookie刷新方式选择对话框
+        dialog = MonitorCookieRefreshDialog(self.root, self._on_wizard_cookie_method_selected)
 
-                    # 执行获取cookie（在后台线程中）
-                    # 注意：auto_get_douyin_cookie内部会启动新线程，所以这里直接调用
-                    # 但我们需要等待它完成，所以使用一个标志来检查
-                    original_cookie = getattr(self.app, 'douyin_cookie', '')
+    def _on_wizard_cookie_method_selected(self, method):
+        """处理向导中选择的Cookie刷新方法"""
+        if method == "method1":
+            # 方法一：使用auto_get_douyin_cookie
+            self.cookie_status_label.config(text="正在获取cookie，请稍候...", foreground="blue")
 
-                    # 调用获取cookie方法
-                    self.app.auto_get_douyin_cookie()
+            def get_cookie_thread():
+                try:
+                    if hasattr(self.app, 'auto_get_douyin_cookie'):
+                        # 需要检查selenium是否可用
+                        try:
+                            from selenium.webdriver.edge.options import Options as EdgeOptions
+                            from selenium.webdriver.edge.webdriver import WebDriver as Edge
+                        except ImportError:
+                            self.root.after(0, lambda: messagebox.showerror(
+                                "错误", "未安装selenium库！\n\n请先安装: pip install selenium"))
+                            self.root.after(0, lambda: self.get_cookie_btn.config(state=tk.NORMAL))
+                            self.root.after(0, lambda: self.cookie_status_label.config(
+                                text="获取失败：未安装selenium", foreground="red"))
+                            return
 
-                    # 等待cookie获取完成（轮询检查）
-                    max_wait = 120  # 最多等待120秒
-                    wait_count = 0
-                    while wait_count < max_wait:
-                        time.sleep(1)
-                        wait_count += 1
-                        current_cookie = getattr(self.app, 'douyin_cookie', '')
-                        if current_cookie and current_cookie != original_cookie:
-                            # Cookie已更新
-                            cookie_value = current_cookie
+                        # 执行获取cookie
+                        original_cookie = getattr(self.app, 'douyin_cookie', '')
+                        self.app.auto_get_douyin_cookie()
+
+                        # 等待cookie获取完成
+                        max_wait = 120
+                        wait_count = 0
+                        while wait_count < max_wait:
+                            time.sleep(1)
+                            wait_count += 1
+                            current_cookie = getattr(self.app, 'douyin_cookie', '')
+                            if current_cookie and current_cookie != original_cookie:
+                                cookie_value = current_cookie
+                                self.root.after(0, lambda: self.cookie_text.delete(1.0, tk.END))
+                                self.root.after(0, lambda cv=cookie_value: self.cookie_text.insert(1.0, cv))
+                                self.root.after(0, lambda cv=cookie_value: self.cookie_var.set(cv))
+                                self.root.after(0, self.update_cookie_status)
+                                self.root.after(0, lambda: messagebox.showinfo("成功", "Cookie获取成功！"))
+                                return
+
+                        final_cookie = getattr(self.app, 'douyin_cookie', '')
+                        if final_cookie:
+                            cookie_value = final_cookie
                             self.root.after(0, lambda: self.cookie_text.delete(1.0, tk.END))
                             self.root.after(0, lambda cv=cookie_value: self.cookie_text.insert(1.0, cv))
                             self.root.after(0, lambda cv=cookie_value: self.cookie_var.set(cv))
                             self.root.after(0, self.update_cookie_status)
                             self.root.after(0, lambda: messagebox.showinfo("成功", "Cookie获取成功！"))
-                            return
+                        else:
+                            self.root.after(0, lambda: self.cookie_status_label.config(
+                                text="Cookie获取失败，请重试", foreground="red"))
+                except Exception as e:
+                    error_msg = str(e)
+                    self.root.after(0, lambda msg=error_msg: messagebox.showerror("错误", f"获取cookie失败: {msg}"))
+                    self.root.after(0, lambda msg=error_msg: self.cookie_status_label.config(
+                        text=f"获取失败: {msg}", foreground="red"))
+                finally:
+                    self.root.after(0, lambda: self.get_cookie_btn.config(state=tk.NORMAL))
 
-                    # 超时或未获取到cookie
-                    final_cookie = getattr(self.app, 'douyin_cookie', '')
-                    if final_cookie:
-                        cookie_value = final_cookie
-                        self.root.after(0, lambda: self.cookie_text.delete(1.0, tk.END))
-                        self.root.after(0, lambda cv=cookie_value: self.cookie_text.insert(1.0, cv))
-                        self.root.after(0, lambda cv=cookie_value: self.cookie_var.set(cv))
-                        self.root.after(0, self.update_cookie_status)
-                        self.root.after(0, lambda: messagebox.showinfo("成功", "Cookie获取成功！"))
-                    else:
-                        self.root.after(0, lambda: self.cookie_status_label.config(
-                            text="Cookie获取失败，请重试", foreground="red"))
-                else:
-                    self.root.after(0, lambda: messagebox.showerror("错误", "无法访问获取cookie功能"))
-            except Exception as e:
-                error_msg = str(e)
-                self.root.after(0, lambda msg=error_msg: messagebox.showerror("错误", f"获取cookie失败: {msg}"))
-                self.root.after(0, lambda msg=error_msg: self.cookie_status_label.config(
-                    text=f"获取失败: {msg}", foreground="red"))
-            finally:
-                self.root.after(0, lambda: self.get_cookie_btn.config(state=tk.NORMAL))
+            threading.Thread(target=get_cookie_thread, daemon=True).start()
 
-        threading.Thread(target=get_cookie_thread, daemon=True).start()
+        elif method == "method2":
+            # 方法二：打开监控Cookie刷新器
+            self.cookie_status_label.config(text="请按照弹出的刷新器操作...", foreground="blue")
+            cookie_refresher = MonitorCookieRefresher(self.root, self._on_wizard_cookie_received)
+            cookie_refresher.root.transient(self.root)
+            cookie_refresher.root.grab_set()
+
+        elif method == "method3":
+            # 方法三：手动填写Cookie（支持滚动）
+            self.get_cookie_btn.config(state=tk.NORMAL)
+            self.manual_input_cookie_with_scroll()
+
+    def _on_wizard_cookie_received(self, cookie_str):
+        """向导中收到Cookie后的回调"""
+        if cookie_str:
+            self.cookie_text.delete(1.0, tk.END)
+            self.cookie_text.insert(1.0, cookie_str)
+            self.cookie_var.set(cookie_str)
+            self.update_cookie_status()
+            self.get_cookie_btn.config(state=tk.NORMAL)
+            messagebox.showinfo("成功", "监控Cookie已更新")
+
+    def manual_input_cookie_with_scroll(self):
+        """向导中手动填写Cookie（支持滚动的大输入框）"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("手动填写Cookie")
+        dialog.geometry("700x500")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        # 居中显示
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (700 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (500 // 2)
+        dialog.geometry(f"700x500+{x}+{y}")
+
+        # 主框架
+        main_frame = ttk.Frame(dialog, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # 说明标签
+        ttk.Label(main_frame, text="请输入抖音 Cookie：",
+                 font=("Arial", 12)).pack(pady=10)
+
+        # Cookie输入框（带滚动）
+        cookie_frame = ttk.Frame(main_frame)
+        cookie_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        scrollbar = ttk.Scrollbar(cookie_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        cookie_text = tk.Text(cookie_frame, wrap=tk.WORD, yscrollcommand=scrollbar.set,
+                             height=20, font=("Consolas", 10))
+        cookie_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        scrollbar.config(command=cookie_text.yview)
+
+        # 如果有现有cookie，显示出来
+        if self.cookie_var.get():
+            cookie_text.insert(1.0, self.cookie_var.get())
+
+        # 按钮框架
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=10)
+
+        def on_confirm():
+            cookie_value = cookie_text.get(1.0, tk.END).strip()
+            if cookie_value:
+                self.cookie_text.delete(1.0, tk.END)
+                self.cookie_text.insert(1.0, cookie_value)
+                self.cookie_var.set(cookie_value)
+                self.update_cookie_status()
+                dialog.destroy()
+                messagebox.showinfo("成功", "监控Cookie已更新")
+            else:
+                messagebox.showwarning("警告", "Cookie不能为空")
+
+        def on_cancel():
+            dialog.destroy()
+
+        ttk.Button(button_frame, text="确认", command=on_confirm).pack(side=tk.LEFT, padx=10)
+        ttk.Button(button_frame, text="取消", command=on_cancel).pack(side=tk.LEFT, padx=10)
 
     def show_step3(self):
         """显示第3步：设置通知配置"""
@@ -9889,7 +11492,7 @@ class RecordWizardWindow:
         if 'quality' in self.step2_data:
             self.quality_var.set(self.step2_data['quality'])
         quality_combo = ttk.Combobox(quality_frame, textvariable=self.quality_var,
-                                    values=["原画", "蓝光", "超清", "高清", "标清"],
+                                    values=["极致：适用蓝V，连麦", "原画", "蓝光", "超清", "高清", "标清"],
                                     state="readonly", width=15)
         quality_combo.pack(side=tk.LEFT, padx=5)
 
@@ -11820,6 +13423,11 @@ class EnvironmentDetectorWindow:
         replace_btn = ttk.Button(scrollable_frame, text="一键替换",
                                 command=lambda: self.replace_all_msedgedriver("user"))
         replace_btn.pack(pady=10)
+        
+        # 恢复浏览器驱动备份按钮
+        restore_backup_btn = ttk.Button(scrollable_frame, text="恢复浏览器驱动备份（回退版本）",
+                                       command=self.restore_driver_backup)
+        restore_backup_btn.pack(pady=10)
 
     def setup_system_path_tab(self):
         """设置系统变量PATH检测tab"""
@@ -12318,7 +13926,143 @@ Windows 用户变量 PATH 设置方法：
             pass
 
         return None
-
+    
+    def restore_driver_backup(self):
+        """恢复浏览器驱动备份（回退版本）"""
+        try:
+            import shutil
+            import os
+            from tkinter import messagebox
+            import subprocess
+            import datetime
+            
+            # 获取当前应用程序目录
+            app_dir = get_app_directory()
+            current_driver_path = os.path.join(app_dir, "msedgedriver.exe")
+            backup_path = current_driver_path + ".bak"
+            
+            # 检查备份是否存在
+            if not os.path.exists(backup_path):
+                messagebox.showinfo("恢复备份", "未找到浏览器驱动备份文件。", parent=self.root)
+                return
+            
+            # 获取当前驱动版本（如果有）
+            current_version = "未知版本"
+            if os.path.exists(current_driver_path):
+                current_version = self.get_msedgedriver_version(current_driver_path)
+            
+            # 获取备份驱动版本
+            backup_version = self.get_msedgedriver_version(backup_path)
+            
+            # 确认对话框
+            response = messagebox.askyesno(
+                "恢复备份确认",
+                f"是否要恢复浏览器驱动备份（将回退到上一个版本）？\n\n"
+                f"当前驱动版本: {current_version}\n"
+                f"备份驱动版本: {backup_version}\n\n"
+                f"当前驱动文件: {current_driver_path}\n"
+                f"备份文件: {backup_path}",
+                parent=self.root
+            )
+            
+            if not response:
+                return
+            
+            # 备份当前版本
+            timestamp = int(datetime.datetime.now().timestamp())
+            temp_backup = current_driver_path + f".temp-{timestamp}.bak"
+            backup_created = False
+            
+            try:
+                if os.path.exists(current_driver_path):
+                    shutil.copy2(current_driver_path, temp_backup)
+                    backup_created = True
+                    print(f"已创建当前驱动临时备份: {temp_backup}")
+            except Exception as e:
+                messagebox.showerror("恢复失败", f"备份当前驱动失败: {str(e)}", parent=self.root)
+                return
+            
+            try:
+                # 恢复备份
+                shutil.copy2(backup_path, current_driver_path)
+                
+                # 验证恢复的驱动文件
+                restored_version = self.get_msedgedriver_version(current_driver_path)
+                
+                messagebox.showinfo(
+                    "恢复成功",
+                    f"浏览器驱动已成功恢复到备份版本。\n\n"
+                    f"之前版本: {current_version}\n"
+                    f"恢复后版本: {restored_version}\n\n"
+                    f"建议重新打开【用户环境变量检测】页面，检查PATH中是否有正确版本的msedgedriver.exe。",
+                    parent=self.root
+                )
+                
+                # 删除临时备份
+                try:
+                    if backup_created and os.path.exists(temp_backup):
+                        os.remove(temp_backup)
+                        print(f"已删除临时备份: {temp_backup}")
+                except Exception as e:
+                    print(f"删除临时备份失败: {str(e)}")
+                    pass
+                
+                # 记录恢复操作到配置文件中
+                try:
+                    config_file = os.path.join(get_app_directory(), "streamer_monitor_config.json")
+                    if os.path.exists(config_file):
+                        import json
+                        with open(config_file, "r", encoding="utf-8") as f:
+                            cfg = json.load(f) or {}
+                    else:
+                        cfg = {}
+                    
+                    # 记录恢复记录
+                    if "edgedriver_restore_history" not in cfg:
+                        cfg["edgedriver_restore_history"] = []
+                    
+                    restore_record = {
+                        "restore_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "from_version": current_version,
+                        "to_version": restored_version,
+                        "description": "用户手动恢复浏览器驱动备份"
+                    }
+                    cfg["edgedriver_restore_history"].append(restore_record)
+                    
+                    # 限制历史记录长度
+                    if len(cfg["edgedriver_restore_history"]) > 10:
+                        cfg["edgedriver_restore_history"] = cfg["edgedriver_restore_history"][-10:]
+                    
+                    with open(config_file, "w", encoding="utf-8") as f:
+                        json.dump(cfg, f, ensure_ascii=False, indent=2)
+                        
+                    print(f"已记录恢复操作: {current_version} -> {restored_version}")
+                except Exception as config_error:
+                    print(f"记录恢复操作失败: {config_error}")
+                    
+                # 重新检测版本信息
+                self.update_version_info("user")
+                
+            except Exception as e:
+                # 恢复失败，尝试恢复临时备份
+                messagebox.showerror("恢复失败", f"恢复备份失败: {str(e)}", parent=self.root)
+                
+                try:
+                    if backup_created and os.path.exists(temp_backup) and os.path.exists(current_driver_path):
+                        shutil.copy2(temp_backup, current_driver_path)
+                        print(f"已从临时备份恢复当前驱动: {temp_backup}")
+                        
+                        # 尝试删除临时备份
+                        try:
+                            os.remove(temp_backup)
+                        except:
+                            pass
+                except Exception as restore_error:
+                    messagebox.showerror("恢复失败", f"回滚到当前驱动也失败: {str(restore_error)}", parent=self.root)
+                    
+        except Exception as e:
+            messagebox.showerror("恢复失败", f"恢复备份时发生错误: {str(e)}", parent=self.root)
+    
     def replace_all_msedgedriver(self, path_type):
         """一键替换所有PATH中的msedgedriver.exe为工作目录的版本"""
         try:
