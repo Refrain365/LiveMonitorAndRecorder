@@ -6,7 +6,7 @@ scriptPath = fso.GetParentFolderName(WScript.ScriptFullName)
 
 ' 构建aria2命令，设置工作目录为脚本所在目录
 Dim strArgs
-strArgs = "aria2c --enable-rpc --rpc-listen-all --max-concurrent-downloads=100 --timeout=120 --max-connection-per-server=16 --dir=" & Chr(34) & scriptPath & Chr(34)
+strArgs = "aria2c --enable-rpc --rpc-listen-all --disable-ipv6=true --max-concurrent-downloads=100 --timeout=120 --max-connection-per-server=16 --dir=" & Chr(34) & scriptPath & Chr(34)
 
 ' 运行aria2，隐藏窗口
 oShell.Run strArgs, 0, false
