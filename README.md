@@ -9,7 +9,9 @@
 
 目前项目同时支持 **Windows** 与 **Linux** 平台，支持 **Douyin**、**Bilibili** 等直播平台。
 
-> 作者：bilibili @真理的中点 · 本项目开源免费，请勿倒卖，仅供学习交流。
+> 作者：bilibili @真理的中点·主要负责Windows版开发
+> Linux版由[github·yhyzzm](https://github.com/yhyzzm)根据Windows版开发
+>  · 本项目开源免费，请勿倒卖，仅供学习交流。
 
 ## ✨ 功能特性
 
