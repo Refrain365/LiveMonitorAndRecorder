@@ -41,7 +41,7 @@ python MonitorAndRecorder.py
 2. 切到 **抖音录播(V2)**，把「自动录播」点成 ✓、选好画质即可
 3. 主播一开播即自动录制，下播后自动转码（可选）
 
-> 完整配置流程与各功能细节，请阅读 [ReadMe 说明书](./instructions.txt)。
+> 完整配置流程与各功能细节，请阅读 [更详细的instructions说明书](./instructions.txt)。
 
 ## 🐧 Linux 版
 
