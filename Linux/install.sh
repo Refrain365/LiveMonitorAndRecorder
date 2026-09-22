@@ -220,7 +220,7 @@ if [ ! -f "$SCRIPT_DIR/main.py" ]; then
         rm -rf "$BOOT_TMP/x"
         mkdir -p "$BOOT_TMP/x"
         if tar -xzf "$BOOT_TMP/lmr.tar.gz" -C "$BOOT_TMP/x" 2>/dev/null; then
-          SRC="$(find "$BOOT_TMP/x" -maxdepth3 -type d -name Linux | head -1)"
+          SRC="$(find "$BOOT_TMP/x" -maxdepth 3 -type d -name Linux | head -1)"
           if [ -n "$SRC" ] && [ -f "$SRC/main.py" ]; then
             mkdir -p "$TARGET"
             cp -a "$SRC"/. "$TARGET"/
