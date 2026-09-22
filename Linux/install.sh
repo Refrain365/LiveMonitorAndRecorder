@@ -212,7 +212,8 @@ if [ ! -f "$SCRIPT_DIR/main.py" ]; then
 
   DOWNLOADED=0
   for br in $LMR_BRANCHES; do
-    FULL_URL="https://github.com/Refrain365/LiveMonitorAndRecorder/archive/refs/heads/${br}.tar.gz"
+    # ?cb=时间戳：绕过镜像对 archive 的旧缓存（GitHub 忽略该参数，直连不受影响）
+    FULL_URL="https://github.com/Refrain365/LiveMonitorAndRecorder/archive/refs/heads/${br}.tar.gz?cb=$(date +%s)"
     for prefix in "${DL_ORDER[@]}"; do
       log "下载分支 ${br}（源: ${prefix:-直连 GitHub}）..."
       if curl -fL --retry 1 --connect-timeout 8 --max-time 600 \
@@ -243,17 +244,17 @@ if [ ! -f "$SCRIPT_DIR/main.py" ]; then
   fi
   log "已下载到: $TARGET（目录名 LiveMonitorAndRecorder）"
   rm -rf "$BOOT_TMP"
-  # 防御：目标分支尚未包含 install.sh 时，用当前正在运行的这份脚本补齐
-  if [ ! -f "$TARGET/install.sh" ] && [ -f "$SCRIPT_DIR/install.sh" ]; then
-    cp "$SCRIPT_DIR/install.sh" "$TARGET/install.sh"
-  fi
-  if [ ! -f "$TARGET/install.sh" ]; then
-    err "下载内容缺少 install.sh（分支可能尚未更新），请稍后重试或手动克隆："
+  if [ ! -f "$TARGET/main.py" ]; then
+    err "下载内容异常（缺少 main.py），请稍后重试或手动克隆："
     err "  git clone https://github.com/Refrain365/LiveMonitorAndRecorder.git LiveMonitorAndRecorder"
     exit 1
   fi
-  # 切换到完整项目目录重新执行（--systemd 等参数原样传递）
-  exec bash "$TARGET/install.sh" "$@"
+  # 直接切换工作目录，继续执行本脚本剩余步骤：
+  # 不依赖压缩包内是否包含 install.sh（镜像可能缓存合并前的旧包），
+  # --systemd 等参数与 LMR_* 环境变量在本进程内天然保留。
+  SCRIPT_DIR="$TARGET"
+  cd "$SCRIPT_DIR" || { err "无法进入项目目录: $SCRIPT_DIR"; exit 1; }
+  log "已切换到项目目录，继续安装 ..."
 fi
 
 OS_NAME="unknown"
