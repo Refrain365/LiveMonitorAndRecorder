@@ -1,0 +1,4 @@
+requests
+selenium
+aria2p
+psutil
