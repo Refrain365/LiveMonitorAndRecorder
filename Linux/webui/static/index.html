@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>直播监控与录制助手 · Linux</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="login-view" class="hidden">
+  <div class="login-box">
+    <h2>🦜 LiveMonitorAndRecorder</h2>
+    <p class="muted">请输入访问口令</p>
+    <input type="password" id="login-password" placeholder="口令" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">登 录</button>
+    <p id="login-err" class="err"></p>
+  </div>
+</div>
+
+<div id="app-view" class="hidden">
+<nav>
+  <span class="brand">🦜 直播监控与录制</span>
+  <a data-tab="dashboard" class="active">仪表盘</a>
+  <a data-tab="streamers">主播管理</a>
+  <a data-tab="files">录播文件</a>
+  <a data-tab="notify">通知</a>
+  <a data-tab="cookies">Cookie</a>
+  <a data-tab="settings">设置</a>
+  <span class="spacer"></span>
+  <span id="sys-info" class="muted"></span>
+</nav>
+
+<!-- 仪表盘 -->
+<section id="tab-dashboard" class="tab active">
+  <div class="toolbar">
+    <button onclick="loadDashboard()">🔄 刷新</button>
+    <label class="auto"><input type="checkbox" id="auto-refresh" checked> 自动刷新（5s）</label>
+  </div>
+  <div id="dashboard-cards" class="cards"></div>
+  <div class="panel">
+    <h3>运行日志</h3>
+    <pre id="log-view" class="logview">加载中...</pre>
+    <div class="toolbar"><button onclick="loadLogs()">刷新日志</button>
+    <label class="auto"><input type="checkbox" id="auto-log" checked> 日志自动刷新（5s）</label></div>
+  </div>
+</section>
+
+<!-- 主播管理 -->
+<section id="tab-streamers" class="tab">
+  <div class="panel">
+    <h3>添加主播</h3>
+    <div class="form-row">
+      <select id="add-platform">
+        <option value="bilibili">哔哩哔哩</option>
+        <option value="douyin">抖音</option>
+      </select>
+      <input id="add-name" placeholder="昵称（留空自动获取）">
+      <input id="add-url" placeholder="B站 UID / 直播间链接；抖音直播间链接、主页链接或抖音号" class="grow">
+      <button onclick="addStreamer()">➕ 添加主播</button>
+    </div>
+    <p class="muted">B站：UID 或直播间链接（两者是不同的数字，程序会自动换算）。抖音：直播间链接（开播时，自动识别主播）或主页链接（douyin.com/user/...）；纯抖音号因接口限制可能无法解析，推荐前两种。昵称留空自动获取。</p>
+  </div>
+  <div class="panel">
+    <h3>主播列表</h3>
+    <table id="streamer-table">
+      <thead><tr><th>昵称</th><th>平台</th><th>链接</th><th>画质</th><th>监控</th><th>自动录制</th><th>通知组</th><th>操作</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 录播文件 -->
+<section id="tab-files" class="tab">
+  <div class="toolbar">
+    <div class="seg">
+      <button class="seg-btn active" data-plat="bilibili" onclick="switchFilesPlat('bilibili')">哔哩哔哩</button>
+      <button class="seg-btn" data-plat="douyin" onclick="switchFilesPlat('douyin')">抖音</button>
+    </div>
+    <button onclick="loadFiles()">🔄 刷新</button>
+    <span id="files-summary" class="muted"></span>
+  </div>
+  <div id="files-tree" class="panel">加载中...</div>
+</section>
+
+<!-- 通知 -->
+<section id="tab-notify" class="tab">
+  <div class="panel">
+    <h3>推送渠道</h3>
+    <div class="form-grid">
+      <label>WxPusher 启用 <input type="checkbox" id="n-wx-enabled"></label>
+      <label>AppToken <input id="n-wx-token" placeholder="WxPusher AppToken"></label>
+      <label>UID 列表 <textarea id="n-wx-uids" rows="2" placeholder="每行一个 UID"></textarea></label>
+      <label>企业微信 启用 <input type="checkbox" id="n-wecom-enabled"></label>
+      <label>机器人 Webhook <input id="n-wecom-webhook" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..."></label>
+    </div>
+    <button onclick="saveNotify()">💾 保存推送配置</button>
+    <button onclick="testNotify()" class="secondary">🧪 发送测试推送</button>
+  </div>
+  <div class="panel">
+    <h3>通知组</h3>
+    <p class="muted">每组可包含成员名单与启用渠道；主播未归组时使用默认组。</p>
+    <div id="group-list"></div>
+    <button onclick="addGroup()">➕ 添加组</button>
+    <div class="form-row">
+      <label>默认组：</label><input id="n-default-group" class="grow">
+    </div>
+  </div>
+  <div class="panel">
+    <h3>勿扰时段</h3>
+    <p class="muted">命中时段内的开播/下播通知将被屏蔽，支持跨天（如 23:00 - 07:00）。</p>
+    <div id="dnd-list"></div>
+    <button onclick="addDnd()">➕ 添加时段</button>
+  </div>
+</section>
+
+<!-- Cookie -->
+<section id="tab-cookies" class="tab">
+  <div class="panel">
+    <h3>哔哩哔哩扫码登录</h3>
+    <p class="muted">点击生成二维码，用B站手机 App 扫码并确认后，Cookie 自动保存并填入下方输入框。</p>
+    <div class="toolbar">
+      <button onclick="qrStart()">📱 生成B站登录二维码</button>
+    </div>
+    <div id="qr-box" class="qr-box hidden">
+      <img id="qr-img" alt="登录二维码">
+      <div id="qr-status" class="muted">等待扫码…</div>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>抖音监控 Cookie</h3>
+    <p class="muted">用于检测开播状态，任意未过期的抖音网页 Cookie 即可。</p>
+    <textarea id="c-douyin-monitor" rows="5" placeholder="粘贴浏览器复制的 Cookie"></textarea>
+  </div>
+  <div class="panel">
+    <h3>抖音录播 Cookie</h3>
+    <p class="muted">用于抓取直播流直链。程序会按所选画质自动注入 live_local_quality / webcast_local_quality 参数，无需分档准备多份 Cookie。</p>
+    <textarea id="c-douyin-record" rows="5" placeholder="粘贴浏览器复制的 Cookie"></textarea>
+  </div>
+  <div class="panel">
+    <h3>B站 Cookie</h3>
+    <p class="muted">仅高画质录制或需要登录的直播间需要；普通录制可留空。</p>
+    <textarea id="c-bilibili" rows="4" placeholder="粘贴浏览器复制的 Cookie"></textarea>
+  </div>
+  <button onclick="saveCookies()">💾 保存 Cookie</button>
+</section>
+
+<!-- 设置 -->
+<section id="tab-settings" class="tab">
+  <div class="panel">
+    <h3>监控与录制</h3>
+    <div class="form-grid">
+      <label>检测间隔基数（秒）<input type="number" id="s-check-interval" min="10"></label>
+      <label>监控速度档（1快~5慢）<input type="number" id="s-speed" min="1" max="5"></label>
+      <label>保存目录<input id="s-save-folder"></label>
+      <label>录制分段（GB，0 不分）<input type="number" id="s-split" min="0" step="0.5"></label>
+      <label>下播后保留原始 FLV/TS<input type="checkbox" id="s-keep-flv"></label>
+      <label>转码完整性容差（MB）<input type="number" id="s-tolerance" min="0"></label>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>定时调速</h3>
+    <p class="muted">指定时段内临时使用另一档监控速度。</p>
+    <div id="speed-list"></div>
+    <button onclick="addSpeedPeriod()">➕ 添加时段</button>
+  </div>
+  <div class="panel">
+    <h3>休眠时段</h3>
+    <p class="muted">命中时段暂停监控（通知与录制触发），已开始的录制任务继续运行。</p>
+    <div id="sleep-list"></div>
+    <button onclick="addSleepPeriod()">➕ 添加时段</button>
+  </div>
+  <div class="panel">
+    <h3>自动化脚本</h3>
+    <p class="muted">把自定义 .py / .sh 脚本绑定到主播的开播（直播中）或下播（未开播）事件，单线程串行执行。</p>
+    <div id="auto-list"></div>
+    <button onclick="addAutomation()">➕ 添加自动化</button>
+  </div>
+  <div class="panel">
+    <h3>Web 服务</h3>
+    <div class="form-grid">
+      <label>监听地址<input id="s-host" placeholder="0.0.0.0"></label>
+      <label>端口<input type="number" id="s-port" min="1"></label>
+    </div>
+    <p class="muted">地址/端口修改后需重启程序生效。</p>
+    <h3>访问口令</h3>
+    <div class="form-row">
+      <input type="password" id="s-old-pass" placeholder="旧口令（未设置过可留空）">
+      <input type="password" id="s-new-pass" placeholder="新口令（留空清除口令）">
+      <button onclick="changePassword()">修改口令</button>
+    </div>
+  </div>
+  <button onclick="saveSettings()" class="primary-big">💾 保存全部设置</button>
+</section>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

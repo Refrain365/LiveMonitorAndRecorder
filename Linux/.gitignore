@@ -1,0 +1,15 @@
+# 运行时数据（含 Cookie 等隐私凭证，严禁上传）
+config/
+logs/
+Recordings/
+*.log
+
+# Python 缓存与虚拟环境
+__pycache__/
+*.pyc
+.venv/
+
+# 测试/临时文件
+test_cookie.txt
+qr_test.png
+*.tmp
