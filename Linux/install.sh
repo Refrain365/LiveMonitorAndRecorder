@@ -5,15 +5,16 @@
 # 不会改动仓库其他部分；仅支持 Linux 环境执行。
 # 支持：Ubuntu / Debian（apt）、CentOS / RHEL / Fedora（dnf/yum）
 #
-# 用法：
-#   bash install.sh              # 在完整项目目录（含 main.py）里安装依赖
-#   bash install.sh --systemd    # 同上，并创建+启动 systemd 常驻服务
+# 用法（推荐：一条命令直接跑）：
+#   curl -fsSL https://raw.githubusercontent.com/Refrain365/LiveMonitorAndRecorder/main/Linux/install.sh | bash
+#   加参数用 bash -s -- 传递：   .../install.sh | bash -s -- --systemd
+#   环境变量直接给 bash：        .../install.sh | LMR_BRANCH=feat/linux-support bash
+#                                .../install.sh | LMR_MIRROR=https://ghproxy.cc/ bash
 #
-#   单独下载本脚本运行也可以——检测到缺少项目文件时，会自动把
-#   仓库 Linux/ 目录内容下载到 ./LiveMonitorAndRecorder/ 再继续安装：
-#     curl -fsSL https://raw.githubusercontent.com/Refrain365/LiveMonitorAndRecorder/main/Linux/install.sh -o install.sh
-#     bash install.sh
-#   指定分支：LMR_BRANCH=feat/linux-support bash install.sh
+#   也可先下载再执行（在完整项目目录、含 main.py 时会跳过下载直接安装）：
+#     curl -fsSL .../Linux/install.sh -o install.sh && bash install.sh [--systemd]
+#   自举说明：检测到脚本同目录缺少项目文件时，会自动把仓库 Linux/ 目录内容
+#   下载到 ./LiveMonitorAndRecorder/ 再继续安装。
 # ============================================================
 set -euo pipefail
 
@@ -141,7 +142,7 @@ if [ ! -f "$SCRIPT_DIR/main.py" ]; then
   # 首字节延迟探测：range 请求第1个字节，4 秒超时，成功输出耗时（秒）
   probe_ttfb() {
     local out
-    out=$(curl -fL -sS -r0-0 --max-time4 -o /dev/null \
+    out=$(curl -fL -sS -r0-0 --max-time 4 -o /dev/null \
       -w '%{http_code} %{time_total}' "$1$2" 2>/dev/null) || return 1
     case "$out" in
       200\ * | 206\ *) printf '%s' "$out" | awk '{print $2}' ;;
@@ -176,7 +177,12 @@ if [ ! -f "$SCRIPT_DIR/main.py" ]; then
       i=$((i + 1))
     done
     rm -rf "$dir"
-    printf '%s' "$best"
+    # 全部探测失败时返回哨兵值，避免与“直连最快（空前缀）”混淆
+    if [ "$bestt" = "999999" ]; then
+      printf '%s' "__NONE__"
+    else
+      printf '%s' "$best"
+    fi
   }
 
   FIRST_BR="${LMR_BRANCHES%% *}"
@@ -187,10 +193,13 @@ if [ ! -f "$SCRIPT_DIR/main.py" ]; then
   BEST_PREFIX="$(select_fastest_prefix "$PROBE_URL")"
   if [ -n "${LMR_MIRROR:-}" ]; then
     log "使用指定镜像: $LMR_MIRROR"
-  elif [ -n "$BEST_PREFIX" ]; then
-    log "最快镜像: $BEST_PREFIX"
-  else
+  elif [ "$BEST_PREFIX" = "__NONE__" ]; then
+    warn "所有源测速均失败，将按列表顺序逐个尝试"
+    BEST_PREFIX=""
+  elif [ -z "$BEST_PREFIX" ]; then
     log "最快源: 直连 GitHub"
+  else
+    log "最快镜像: $BEST_PREFIX"
   fi
 
   # 下载顺序：最快者在前，其余候选依次兜底
@@ -206,7 +215,7 @@ if [ ! -f "$SCRIPT_DIR/main.py" ]; then
     FULL_URL="https://github.com/Refrain365/LiveMonitorAndRecorder/archive/refs/heads/${br}.tar.gz"
     for prefix in "${DL_ORDER[@]}"; do
       log "下载分支 ${br}（源: ${prefix:-直连 GitHub}）..."
-      if curl -fL --retry1 --connect-timeout8 --max-time600 \
+      if curl -fL --retry 1 --connect-timeout 8 --max-time 600 \
           -o "$BOOT_TMP/lmr.tar.gz" "${prefix}${FULL_URL}"; then
         rm -rf "$BOOT_TMP/x"
         mkdir -p "$BOOT_TMP/x"
@@ -222,11 +231,11 @@ if [ ! -f "$SCRIPT_DIR/main.py" ]; then
       fi
       warn "该源下载失败，尝试下一个源 ..."
     done
-    if [ "$DOWNLOADED" -eq1 ]; then
+    if [ "$DOWNLOADED" -eq 1 ]; then
       break
     fi
   done
-  if [ "$DOWNLOADED" -ne1 ]; then
+  if [ "$DOWNLOADED" -ne 1 ]; then
     err "项目内容下载失败（全部源均不可用）。可手动克隆："
     err "  git clone https://github.com/Refrain365/LiveMonitorAndRecorder.git LiveMonitorAndRecorder"
     err "  然后执行 LiveMonitorAndRecorder/Linux/install.sh"

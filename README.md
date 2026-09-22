@@ -54,8 +54,7 @@ python MonitorAndRecorder.py
 Linux一键安装脚本
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Refrain365/LiveMonitorAndRecorder/main/Linux/install.sh -o install.sh
-bash install.sh
+curl -fsSL https://raw.githubusercontent.com/Refrain365/LiveMonitorAndRecorder/main/Linux/install.sh | bash
 ```
 
 安装完成后在任意目录执行 `live` 即可启动录播程序，浏览器打开 `http://<服务器IP>:6657`

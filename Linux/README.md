@@ -42,8 +42,7 @@ Windows 版对齐；界面与交互为独立实现的 Web UI（不是 Tkinter �
 Linux一键安装脚本
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Refrain365/LiveMonitorAndRecorder/main/Linux/install.sh -o install.sh
-bash install.sh
+curl -fsSL https://raw.githubusercontent.com/Refrain365/LiveMonitorAndRecorder/main/Linux/install.sh | bash
 ```
 
 仅安装 Linux 版：脚本会把仓库 `Linux/` 目录的内容下载到 **`./LiveMonitorAndRecorder/`**，
@@ -53,14 +52,14 @@ bash install.sh
 
 - 下载前会**自动测速选择最快源**：直连 GitHub +44 个社区镜像（ghproxy 前缀形态）
   并行探测首字节延迟，最快者优先、失败自动按序切换；也可强制指定：
-  `LMR_MIRROR=https://ghproxy.cc/ bash install.sh`
-- 下载分支默认依次尝试 `main`、`feat/linux-support`（PR 合并前用后者兜底）；
-  可用环境变量指定：`LMR_BRANCH=feat/linux-support bash install.sh`
+  `curl -fsSL .../install.sh | LMR_MIRROR=https://ghproxy.cc/ bash`
+- 下载分支默认依次尝试 `main`、`feat/linux-support`（兜底）；
+  可用环境变量指定：`curl -fsSL .../install.sh | LMR_BRANCH=feat/linux-support bash`
 
-同时创建 systemd 常驻服务（可选，参数会随引导脚本自动传递到下载后的目录）：
+同时创建 systemd 常驻服务（可选，参数用 `bash -s --` 传递）：
 
 ```bash
-bash install.sh --systemd
+curl -fsSL https://raw.githubusercontent.com/Refrain365/LiveMonitorAndRecorder/main/Linux/install.sh | bash -s -- --systemd
 ```
 
 ### 手动安装（不使用脚本时）
