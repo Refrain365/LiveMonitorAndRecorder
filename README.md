@@ -5,7 +5,7 @@
 一个直播监控与录制助手：对主播直播状态进行监控提醒，开播后自动录制直播流，下播后无损封装为 MP4，并通过微信推送开播提醒。
 
 - **Windows 版**：基于 Python + Aria2 + FFmpeg
-- **Linux 版**：基于 Python + Streamlink + FFmpeg
+- **Linux 版**：基于 Python + FastAPI（Web UI）+ FFmpeg / Streamlink
 
 目前项目同时支持 **Windows** 与 **Linux** 平台，支持 **Douyin**、**Bilibili** 等直播平台。
 
@@ -47,27 +47,30 @@ python MonitorAndRecorder.py
 
 ## 🐧 Linux 版
 
-Linux 版本为**独立实现**，并非简单移植：
+服务器挂机向的独立实现：**FastAPI 网页界面** + FFmpeg / Streamlink 引擎，
+面向长期运行、无人值守场景。监控检测、直链解析、断流重连、通知体系等核心逻辑
+与 Windows 版一致，界面为独立实现的 Web UI。
 
-- 功能层面已与 Windows 版本保持一致
-- 针对 Linux **长时间运行**场景进行了稳定性与容错设计
-- 适用于服务器挂机、无人值守场景
-
-### 运行环境要求
-
-| 依赖 | 说明 |
-|---|---|
-| Python 3 | 主程序运行环境 |
-| Streamlink | 直播流解析引擎 |
-| FFmpeg | 转码与封装核心组件（需支持无损封装 MP4） |
-
-已在 **Ubuntu 22.04** 环境下测试通过。
+Linux一键安装脚本
 
 ```bash
-# Ubuntu / Debian 示例
-sudo apt install ffmpeg streamlink
-pip install -r requirement.txt
+curl -fsSL https://raw.githubusercontent.com/Refrain365/LiveMonitorAndRecorder/main/Linux/install.sh -o install.sh
+bash install.sh
 ```
+
+安装完成后在任意目录执行 `live` 即可启动录播程序，浏览器打开 `http://<服务器IP>:6657`
+即可使用（手动方式：`cd LiveMonitorAndRecorder && .venv/bin/python main.py`）。
+
+- 📹 抖音录播 V2：直链解析 + ffmpeg 直录，断流自动重连，下播无损封装 MP4
+- 🖼️ 原画 / 蓝光 / 超清 / 高清 / 标清 五档画质（一份 Cookie 自动分档）
+- 📂 录播文件管理：按 平台/主播/日期 树形浏览、文件大小、断点续传下载
+- 🔔 通知组、勿扰时段、监控速度档、定时调速、休眠时段
+- 📱 B站扫码登录自动获取并保存 Cookie
+- 🤖 开播 / 下播事件绑定自定义脚本
+- 🔐 可选 Web 访问口令，界面适配竖屏浏览
+- ⚙️ `bash install.sh --systemd` 一键创建开机自启服务
+
+详细安装、首次使用步骤与常见问题请阅读 [Linux/README.md](./Linux/README.md)。
 
 ## 🎯 项目目标
 
