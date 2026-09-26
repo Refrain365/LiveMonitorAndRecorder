@@ -5891,6 +5891,9 @@ class LiveMonitorApp:
         self._douyin_refresh_running = False
         # 录播任务开始时间跟踪：{主播名: {gid: start_timestamp}}，按 gid 记录每条录播任务的触发时刻
         self._record_task_start = {}
+        # 已结束录播任务的历史触发时间：{主播名: {gid: start_timestamp}}，
+        # 用于画质兜底判断「短命任务」（目标画质录制不足阈值时长即中断）。
+        self._record_task_end_history = {}
         self.aria2_tasks = []
         self.aria2_monitoring = False
         self.aria2_thread = None
@@ -7845,11 +7848,93 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                         # 仅内部记录计时起点，不输出日志（避免录制中反复刷屏）
                         self._record_task_start[name][gid] = now
 
-            # 清理该主播已结束任务的计时记录（计时随任务结束）
+            # 清理该主播已结束任务的计时记录（计时随任务结束），
+            # 同时把结束任务的触发时间转存到历史记录，供画质兜底判断「短命任务」。
             if name in self._record_task_start:
+                history = self._record_task_end_history.setdefault(name, {})
                 for gid in list(self._record_task_start[name].keys()):
                     if gid not in active_gids:
+                        history[gid] = self._record_task_start[name][gid]
                         del self._record_task_start[name][gid]
+                # 仅保留最近 20 条历史，避免无限增长
+                if len(history) > 20:
+                    for old_gid in list(history.keys())[:len(history) - 20]:
+                        del history[old_gid]
+
+    def _is_short_lived_task(self, streamer, name, broken_tasks):
+        """判定失败/结束任务是否为「短命任务」（录制不足阈值时长即中断）。
+
+        依据 _record_task_end_history（已结束任务）与 _record_task_start（活跃任务）里
+        记录的任务触发时间，若某条失败任务从触发到当前时长小于阈值（默认 2 秒），
+        视为「目标画质录了不到 2 秒就断」，用于触发画质兜底降级；
+        否则视为普通异常断开，走原有重连流程。
+
+        broken_tasks: 状态为 error/removed/complete 的任务列表。
+        """
+        if not broken_tasks:
+            return False
+        threshold = 2.0  # 秒：录制不足该时长视为「短命」
+        now = time.time()
+        history = self._record_task_end_history.get(name, {})
+        active_starts = self._record_task_start.get(name, {})
+        for t in broken_tasks:
+            gid = getattr(t, 'gid', '')
+            if not gid:
+                continue
+            # 优先从历史记录（该任务已被计时清理，说明已结束）取触发时间，
+            # 其次从活跃记录取，最后用主播 record_start_time 兜底。
+            start = history.get(gid) or active_starts.get(gid)
+            if not start:
+                start = streamer.get("record_start_time")
+            if start and (now - start) < threshold:
+                return True
+        return False
+
+    def _downgrade_record_quality(self, streamer, name, reason):
+        """画质兜底：下调主播录制画质一档，清理失败任务并重新触发录制。
+
+        当目标画质录制不足阈值时长（短命任务）即失败/结束，说明该画质无法稳定录制，
+        此时把画质下调一档（原画→蓝光→超清→高清→标清）再试；已是「标清」则不再下调。
+
+        返回 True 表示已执行降级并重录，False 表示无法继续降级。
+        """
+        current = streamer.get("record_quality", "原画")
+        try:
+            idx = self.QUALITY_ORDER.index(current)
+        except ValueError:
+            idx = 0
+
+        # 已是最后一档（标清），无法继续下调
+        if idx >= len(self.QUALITY_ORDER) - 1:
+            return False
+
+        new_quality = self.QUALITY_ORDER[idx + 1]
+        streamer["record_quality"] = new_quality
+        self.log_message(
+            f"[录播] 主播 {name} 画质兜底：{reason}，画质由 {current} 下调为 {new_quality} 重试", "warning")
+        try:
+            self.save_config()
+        except Exception:
+            pass
+
+        # 清理该主播已失败/结束的残留任务，避免占用与干扰
+        try:
+            if self.aria2_client:
+                all_tasks = self.aria2_client.get_downloads()
+                stale = [t for t in all_tasks
+                         if self._extract_streamer_name_from_task(getattr(t, 'name', '') or '') == name
+                         and getattr(t, 'status', '') in ('error', 'removed', 'complete')]
+                if stale:
+                    self.aria2_client.remove(stale, force=True)
+        except Exception:
+            pass
+
+        # 重新触发录播（force 跳过「已有任务」检查），放到后台线程避免阻塞守护循环
+        try:
+            threading.Thread(target=self._trigger_douyin_record, args=(streamer, True), daemon=True).start()
+        except Exception as e:
+            self.log_message(f"[录播] 主播 {name} 画质兜底重录失败: {e}", "error")
+        return True
 
     def _guard_douyin_record(self, tasks_by_streamer=None):
         """录播守护：监控抖音主播的录制任务，自发断开时自动重连（有次数限制）。
@@ -7857,6 +7942,11 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         触发条件（仅自发断开，不做速度守护——速度过低不判定卡死、不强制重录）：
         - 异常断开/失败：aria2 任务状态为 error / removed（下载进程异常断开、被移除等），
           或「该主播此前正在录制，但本轮任务突然消失」（进程崩溃/连接中断）。
+
+        画质兜底：若失败任务为「短命任务」（目标画质录制不足 2 秒即 error/removed/complete），
+        视为该画质无法稳定录制，优先下调一档画质（原画→蓝光→超清→高清→标清）重试，
+        直到某档画质能稳定录制为止（画质设定会被持久化保存）；已是「标清」则不再下调，
+        退回原重连流程。
 
         重连限制：同一主播最多尝试 5 次；自首次重连起 30 秒内仍未恢复则「放弃守护」，
         不再自动重连（避免无限重试）。一旦录制恢复正常或主播下播，计数会重置。
@@ -7970,6 +8060,11 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                         self._record_user_stopped.discard(name)
                 except Exception:
                     pass
+                # 下播时清理该主播的已结束任务历史计时（画质兜底用），避免跨场次误判
+                try:
+                    self._record_task_end_history.pop(name, None)
+                except Exception:
+                    pass
                 continue
             # 用户主动停止（点过 ⏹ 切断）：不守护、不重连，直接跳过
             if name in getattr(self, '_record_user_stopped', ()):
@@ -7984,11 +8079,17 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 active_tasks = [t for t in streamer_tasks if getattr(t, 'status', '') == 'active']
 
                 # ---- 自发断开检测 ----
-                # a) 存在 error/removed 状态的任务 → 下载进程异常断开
+                # a) 存在 error/removed/complete 状态的任务 → 下载进程异常断开或提前结束
                 broken = [t for t in streamer_tasks
-                          if getattr(t, 'status', '') in ('error', 'removed')]
+                          if getattr(t, 'status', '') in ('error', 'removed', 'complete')]
                 if broken:
                     statuses = {getattr(t, 'status', '') for t in broken}
+                    # 画质兜底：若该任务「短命」——录制不足阈值时长（2 秒）即失败/结束，
+                    # 说明当前画质无法稳定录制，优先下调一档画质重试，而非原画质反复重连。
+                    if self._is_short_lived_task(s, name, broken):
+                        if self._downgrade_record_quality(s, name, f"画质 {s.get('record_quality', '原画')} 录制不足 2 秒即中断"):
+                            st["was_recording"] = False
+                            continue
                     _reconnect(s, name, f"检测到下载异常断开（{','.join(statuses)}）")
                     st["was_recording"] = False
                     continue
@@ -8062,6 +8163,11 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             streamer["record_start_time"] = None
             if name in self._record_task_start:
                 del self._record_task_start[name]
+            # 清理该主播的已结束任务历史计时（画质兜底用），避免跨场次误判
+            try:
+                self._record_task_end_history.pop(name, None)
+            except Exception:
+                pass
             # 重置守护状态：本场结束，下次开播重新给 5 次重连机会
             try:
                 guard = getattr(self, "_record_guard_state", None)
@@ -8198,6 +8304,9 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         except Exception:
             return False
         return False
+
+    # 画质档位顺序（从高到低），用于画质兜底：目标画质无法稳定录制时逐档下调
+    QUALITY_ORDER = ["原画", "蓝光", "超清", "高清", "标清"]
 
     def _get_quality_suffix(self, quality, url=""):
         """画质名 -> 画质代码映射（原画=or4，蓝光=uhd，超清=hd，高清=ld，标清=sd）"""
