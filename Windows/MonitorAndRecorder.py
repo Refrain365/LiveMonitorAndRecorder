@@ -8250,8 +8250,8 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 self.log_message(f"[录播] 主播 {name} 已有进行中的录制任务，跳过重复触发")
                 return
 
-            # 获取直播流链接（各画质）
-            stream_urls = self._fetch_douyin_stream_urls(streamer)
+            # 获取直播流链接（各画质），带重试：最多尝试 5 次，每次间隔 5 秒
+            stream_urls = self._fetch_douyin_stream_urls_with_retry(streamer)
             if not stream_urls:
                 self.log_message(f"[录播] 主播 {name} 未获取到直播流链接，录播失败", "warning")
                 return
@@ -8377,6 +8377,42 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         except Exception as e:
             self.log_message(f"[录播] 读取 cookie.txt 失败: {e}", "error")
         return ""
+
+    def _fetch_douyin_stream_urls_with_retry(self, streamer, max_attempts=5, interval=5):
+        """带重试地获取直播流链接：最多尝试 max_attempts 次，每次间隔 interval 秒。
+
+        用于手动/自动触发录播时，直播流链接偶发获取失败（接口抖动、页面未就绪等）
+        的兜底。每次尝试都会写日志，便于定位；全部失败后返回空 dict。
+        """
+        name = streamer.get("name", "")
+        for attempt in range(1, max_attempts + 1):
+            try:
+                stream_urls = self._fetch_douyin_stream_urls(streamer)
+                if stream_urls:
+                    if attempt > 1:
+                        self.log_message(
+                            f"[录播] 主播 {name} 第 {attempt}/{max_attempts} 次尝试获取直播流链接成功")
+                    return stream_urls
+                if attempt < max_attempts:
+                    self.log_message(
+                        f"[录播] 主播 {name} 第 {attempt}/{max_attempts} 次获取直播流链接失败，"
+                        f"{interval} 秒后重试", "warning")
+                    time.sleep(interval)
+                else:
+                    self.log_message(
+                        f"[录播] 主播 {name} 第 {attempt}/{max_attempts} 次获取直播流链接失败，"
+                        f"已达最大尝试次数", "warning")
+            except Exception as e:
+                if attempt < max_attempts:
+                    self.log_message(
+                        f"[录播] 主播 {name} 第 {attempt}/{max_attempts} 次获取直播流链接异常: {e}，"
+                        f"{interval} 秒后重试", "warning")
+                    time.sleep(interval)
+                else:
+                    self.log_message(
+                        f"[录播] 主播 {name} 第 {attempt}/{max_attempts} 次获取直播流链接异常: {e}，"
+                        f"已达最大尝试次数", "error")
+        return {}
 
     def _fetch_douyin_stream_urls(self, streamer):
         """获取直播流链接（纯 requests 方案，无浏览器开销，不会卡死）。
