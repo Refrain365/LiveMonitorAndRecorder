@@ -5865,7 +5865,7 @@ class LiveMonitorApp:
         # 在初始化界面之前检查启动次数并显示开源声明
         if not self.show_opensource_declaration():
             return  # 用户未确认，直接退出程序
-        self.root.title("直播间监控录制助手 v1.0.7.5[抖音和b站][By.bilibili@真理的中点]")
+        self.root.title("直播间监控录制助手 v1.0.7.6[抖音和b站][By.bilibili@真理的中点]")
         self.root.geometry("1010x720")
 
         # ===== 先初始化所有变量 =====
@@ -6153,7 +6153,7 @@ class LiveMonitorApp:
 请用户认准正版渠道：
 github仓库地址：https://github.com/Refrain365/LiveMonitorAndRecorder
 gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
-1.0.7.5版本正版指定蓝奏云地址：https://wwamm.lanzouv.com/b014x0j3ah 提取码见发行版说明
+1.0.7.6版本正版指定蓝奏云地址：https://wwamm.lanzouv.com/b014x0j3ah 提取码见发行版说明
 首次启动没有此弹窗的，或者是弹窗内容被恶意篡改的，都不是官方发行版！
 开发者不会为使用了非官方发行版的用户承担任何责任。
 本程序作者：bilibili@真理的中点"""
@@ -7936,8 +7936,86 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             self.log_message(f"[录播] 主播 {name} 画质兜底重录失败: {e}", "error")
         return True
 
+    # ------------------ 录播守护参数（重连策略随主播直播状态动态变化） ------------------
+    GUARD_RETRY_INTERVAL = 5            # 秒：每 5 秒重试一次（直播中 / 未开播通用）
+    GUARD_MAX_RETRY_LIVE = 0            # 主播「直播中」：0 表示无限次重试，直到录制恢复正常
+    GUARD_MAX_RETRY_OFFLINE = 20        # 主播「未开播」：最多重试 20 次
+    GUARD_STATUS_REFRESH_INTERVAL = 10  # 秒：守护内主动刷新主播最新直播状态的最小间隔
+    GUARD_GIVENUP_REFRESH_INTERVAL = 60  # 秒：已放弃守护后复查直播状态的间隔
+
+    def _new_guard_state(self, last_status=""):
+        """构造一条录播守护状态记录（主播名 -> 状态字典）。"""
+        return {
+            "last_reconnect": 0.0,       # 上次重连时间（控制 5 秒重试间隔）
+            "was_recording": False,      # 上轮是否在录
+            "retry_count": 0,            # 已重连次数
+            "first_retry_ts": 0.0,       # 首次重连时间（日志展示用）
+            "given_up": False,           # 是否已放弃守护（仅未开播重试达上限时置 True）
+            "given_up_at": 0.0,          # 放弃守护的时刻（用于低频复查直播状态）
+            "last_status": last_status,  # 守护上次记录到的直播状态（变化即刷新重连策略）
+        }
+
+    def _refresh_guard_live_status(self, streamer, force=False):
+        """刷新主播的最新直播状态（守护判定用），避免用过期状态决定重连策略。
+
+        按 GUARD_STATUS_REFRESH_INTERVAL 节流（force=True 时忽略节流）；
+        检查失败（返回 None）时保持原状态不变，避免接口抖动造成误判；
+        状态发生变化时同步 last_status 与界面行，并走统一的直播状态变化处理
+        （开播自动触发录播 / 下播清理计时与守护状态）。
+
+        返回：True 表示刷新后（或缓存的）状态为「直播中」。
+        """
+        name = streamer.get("name", "")
+        if not hasattr(self, "_guard_status_checked_at"):
+            self._guard_status_checked_at = {}
+        now = time.time()
+        if not force and now - self._guard_status_checked_at.get(name, 0.0) < self.GUARD_STATUS_REFRESH_INTERVAL:
+            return streamer.get("status", "未开播") == "直播中"
+        self._guard_status_checked_at[name] = now
+        try:
+            is_live = self.check_douyin_live(streamer.get("id", ""), timeout=8)
+        except TypeError:
+            # 兼容未支持 timeout 参数的旧实现
+            is_live = self.check_douyin_live(streamer.get("id", ""))
+        except Exception:
+            is_live = None
+        if is_live is None:
+            return streamer.get("status", "未开播") == "直播中"  # 检查失败：保持原状态不变
+
+        new_status = "直播中" if is_live else "未开播"
+        old_status = streamer.get("status", "未开播")
+        streamer["status"] = new_status
+        streamer["last_check_time"] = datetime.now().strftime("%H:%M:%S")
+        if old_status != new_status:
+            try:
+                skey = self._status_key(streamer)
+                self.last_status[skey] = new_status
+                self.last_status[skey + "_time"] = time.time()
+            except Exception:
+                pass
+            self.log_message(f"[录播守护] 已刷新主播 {name} 最新直播状态：{old_status} → {new_status}")
+            try:
+                self.root.after(0, self._update_streamer_tree_row, streamer, new_status,
+                                streamer.get("last_check_time", ""))
+            except Exception:
+                pass
+            # 走统一的直播状态变化处理：开播自动触发录播 / 下播清理计时与守护状态
+            try:
+                self._on_streamer_live_status_changed(streamer, new_status)
+            except Exception as e:
+                self.log_message(f"[录播守护] 主播 {name} 直播状态变化处理出错: {e}", "warning")
+        return new_status == "直播中"
+
     def _guard_douyin_record(self, tasks_by_streamer=None):
-        """录播守护：监控抖音主播的录制任务，自发断开时自动重连（有次数限制）。
+        """录播守护：监控抖音主播的录制任务，自发断开时自动重连（次数随直播状态变化）。
+
+        重连策略（固定每 5 秒重试一次）：
+        - 主播「直播中」：无限次重试，直到录制恢复正常为止（不再有 5 次上限 / 30 秒窗口）
+        - 主播「未开播」：最多重试 20 次，达上限后放弃守护（再次开播自动恢复）
+
+        直播状态自动刷新：守护每轮按需主动拉取主播最新直播状态（按
+        GUARD_STATUS_REFRESH_INTERVAL 节流），状态一旦变化立即生效——
+        直播中→未开播：切换为 20 次上限；未开播→直播中：计数清零并恢复无限重试。
 
         触发条件（仅自发断开，不做速度守护——速度过低不判定卡死、不强制重录）：
         - 异常断开/失败：aria2 任务状态为 error / removed（下载进程异常断开、被移除等），
@@ -7948,66 +8026,79 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         直到某档画质能稳定录制为止（画质设定会被持久化保存）；已是「标清」则不再下调，
         退回原重连流程。
 
-        重连限制：同一主播最多尝试 5 次；自首次重连起 30 秒内仍未恢复则「放弃守护」，
-        不再自动重连（避免无限重试）。一旦录制恢复正常或主播下播，计数会重置。
-
         不守护的情形（视为用户/正常操作，非异常断开）：
         - 用户手动点 ⏹ 切断（记入 _record_user_stopped）
-        - 主播未开播
         - 任务处于 paused/waiting（切片暂停、排队中属正常过渡）
+        - 主播未开播且任务为 complete（本场录制正常收尾）
 
         tasks_by_streamer: 按主播名预先分组的任务字典 {主播名: [task, ...]}。
         """
         if not self.aria2_client:
             return
-        reconnect_cooldown = 6  # 秒，两次重连之间的冷却，避免密集重试
-        max_reconnect_attempts = 5   # 最多尝试重连 5 次
-        reconnect_window = 30        # 秒，首次重连起 30 秒内仍失败则放弃守护
+        retry_interval = self.GUARD_RETRY_INTERVAL  # 秒，两次重连之间的固定间隔（每 5 秒重试一次）
         now = time.time()
 
-        # 守护状态：{主播名: {"last_reconnect", "was_recording", "retry_count", "first_retry_ts", "given_up"}}
+        # 守护状态：{主播名: {"last_reconnect", "was_recording", "retry_count",
+        #                    "first_retry_ts", "given_up", "given_up_at", "last_status"}}
         if not hasattr(self, "_record_guard_state"):
             self._record_guard_state = {}
 
         def _st(name):
-            return self._record_guard_state.setdefault(name, {
-                "last_reconnect": 0.0, "was_recording": False,
-                "retry_count": 0, "first_retry_ts": 0.0, "given_up": False})
+            if name not in self._record_guard_state:
+                self._record_guard_state[name] = self._new_guard_state()
+            st = self._record_guard_state[name]
+            # 兼容旧版本遗留的状态记录：补齐新增字段，避免 KeyError
+            for _k, _v in self._new_guard_state().items():
+                st.setdefault(_k, _v)
+            return st
 
         def _reset_retry(st):
-            """录制恢复正常时，清空重连计数，允许下次异常重新计数。"""
+            """录制恢复正常或直播状态变化时，清空重连计数，允许重新计数。"""
             st["retry_count"] = 0
             st["first_retry_ts"] = 0.0
             st["given_up"] = False
+            st["given_up_at"] = 0.0
 
-        def _reconnect(s, name, reason):
+        def _max_attempts(is_live):
+            """按当前直播状态返回重连次数上限：直播中为 0（无限次），未开播为 20 次。"""
+            return self.GUARD_MAX_RETRY_LIVE if is_live else self.GUARD_MAX_RETRY_OFFLINE
+
+        def _reconnect(s, name, reason, is_live):
             """停止残留旧任务并重新触发录播。
 
-            限制：最多尝试 5 次；自首次尝试起 30 秒内仍未成功则放弃守护（不再重连）。
-            成功触发后会把任务交给正常守护流程判定，若下一轮恢复 active 则计数清零。
+            节奏：固定每 5 秒重试一次；
+            次数：主播直播中时无限次（直到录制恢复正常），未开播时最多 20 次。
             """
             st = _st(name)
             if st["given_up"]:
-                return  # 已放弃守护，不再重试
-            if now - st["last_reconnect"] < reconnect_cooldown:
-                return  # 冷却中，暂不重试
+                return  # 已放弃守护（未开播重试达上限），等直播状态变化后自动恢复
+            if now - st["last_reconnect"] < retry_interval:
+                return  # 未到 5 秒重试间隔
+            # 上一次重连仍在执行中（取流/提交任务需要时间）：不重复触发，也不计入次数
+            if name in getattr(self, "_record_triggering", ()):
+                return
 
-            # 首次重连：记录起始时间窗口
+            max_attempts = _max_attempts(is_live)
+            # 首次重连：记录起始时间（日志展示用）
             if st["retry_count"] == 0:
                 st["first_retry_ts"] = now
-            # 超过 30 秒窗口或已达 5 次上限 → 放弃守护
-            if (st["retry_count"] >= max_reconnect_attempts
-                    or (st["first_retry_ts"] and now - st["first_retry_ts"] > reconnect_window)):
+            # 仅未开播存在次数上限；直播中 max_attempts 为 0 表示不限次数
+            if max_attempts > 0 and st["retry_count"] >= max_attempts:
                 st["given_up"] = True
+                st["given_up_at"] = now
                 self.log_message(
-                    f"[录播守护] 主播 {name} 重连已达上限（{st['retry_count']} 次 / "
-                    f"{int(now - st['first_retry_ts'])} 秒）仍失败，停止守护该主播录播", "error")
+                    f"[录播守护] 主播 {name} 当前未开播，已重连 {st['retry_count']} 次仍失败，"
+                    f"达到上限（{max_attempts} 次），停止守护该主播录播（开播后自动恢复）", "warning")
                 return
 
             st["retry_count"] += 1
             st["last_reconnect"] = now
+            if max_attempts > 0:
+                progress = f"第 {st['retry_count']}/{max_attempts} 次"
+            else:
+                progress = f"第 {st['retry_count']} 次（直播中无限重试）"
             self.log_message(
-                f"[录播守护] {reason}，正在重新连接录制（第 {st['retry_count']}/{max_reconnect_attempts} 次）...",
+                f"[录播守护] {reason}，正在重新连接录制（{progress}，每 {retry_interval} 秒重试一次）...",
                 "warning")
             # 清理该主播已失败/残留的任务，避免占用与干扰。
             # 注意：不要清理 paused/waiting（切片暂停或排队中属正常状态，误删会打断切片）。
@@ -8018,9 +8109,9 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                     self.aria2_client.remove(stale, force=True)
             except Exception:
                 pass
-            # 重新触发录播（force 跳过「已有任务」检查）
+            # 重新触发录播（force 跳过「已有任务」检查）；后台线程执行，避免拖慢守护循环节奏
             try:
-                self._trigger_douyin_record(s, force=True)
+                threading.Thread(target=self._trigger_douyin_record, args=(s, True), daemon=True).start()
             except Exception as e:
                 self.log_message(f"[录播守护] 主播 {name} 重连失败: {e}", "error")
 
@@ -8043,35 +8134,15 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         douyin_streamers = [s for s in self.streamers if s.get("platform") == "抖音"]
         for s in douyin_streamers:
             name = s.get("name", "")
-            # 未启用录播 或 未在直播 时不做守护（直播已结束属正常停止，非异常断开）
+            # 未启用录播：不做守护
             if not s.get("record_enabled", False):
                 _st(name)["was_recording"] = False
                 continue
 
             st = _st(name)
-            # 主播未开播：视为本场结束，重置守护状态（下次开播重新给 5 次重连机会）
-            if s.get("status") != "直播中":
-                if st["given_up"] or st["retry_count"]:
-                    _reset_retry(st)
-                st["was_recording"] = False
-                # 下播时一并清除「用户主动停止」标记
-                try:
-                    if getattr(self, '_record_user_stopped', None):
-                        self._record_user_stopped.discard(name)
-                except Exception:
-                    pass
-                # 下播时清理该主播的已结束任务历史计时（画质兜底用），避免跨场次误判
-                try:
-                    self._record_task_end_history.pop(name, None)
-                except Exception:
-                    pass
-                continue
             # 用户主动停止（点过 ⏹ 切断）：不守护、不重连，直接跳过
             if name in getattr(self, '_record_user_stopped', ()):
                 st["was_recording"] = False
-                continue
-            # 已放弃守护（重连 5 次 / 30 秒仍失败）：不再检测，直接跳过
-            if st["given_up"]:
                 continue
 
             try:
@@ -8082,25 +8153,58 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 # a) 存在 error/removed/complete 状态的任务 → 下载进程异常断开或提前结束
                 broken = [t for t in streamer_tasks
                           if getattr(t, 'status', '') in ('error', 'removed', 'complete')]
+                # b) 上轮在录，本轮任务凭空消失 → 进程崩溃/连接中断。
+                # 注意：切片操作会让任务短暂 pause，waiting 也是正常过渡态；
+                # 只要还有任何非 error/removed 的任务存在，就不算「消失」。
+                non_broken = [t for t in streamer_tasks
+                              if getattr(t, 'status', '') not in ('error', 'removed')]
+                vanished = st["was_recording"] and not non_broken
+
+                # ---- 自动刷新主播最新直播状态（重连策略随状态变化） ----
+                # 仅在需要做出重连决策时刷新（有异常任务 / 任务消失 / 重试中 / 放弃后复查），
+                # 正常录制中不打扰，避免与监控循环重复高频请求。
+                need_status = bool(broken) or vanished or st["retry_count"] > 0
+                if st["given_up"]:
+                    need_status = now - st["given_up_at"] >= self.GUARD_GIVENUP_REFRESH_INTERVAL
+                if need_status:
+                    self._refresh_guard_live_status(s)
+
+                cur_status = s.get("status", "未开播")
+                is_live = cur_status == "直播中"
+                # 直播状态发生变化：立即刷新守护状态——切换重连策略并清零重连计数
+                if st.get("last_status") != cur_status:
+                    prev_status = st.get("last_status")
+                    st["last_status"] = cur_status
+                    _reset_retry(st)
+                    if prev_status:  # 首次初始化不刷屏
+                        policy = "无限次重试" if is_live else f"最多 {self.GUARD_MAX_RETRY_OFFLINE} 次"
+                        self.log_message(
+                            f"[录播守护] 主播 {name} 直播状态刷新为「{cur_status}」，"
+                            f"重连策略切换为：{policy}（每 {retry_interval} 秒一次）")
+
+                # 已放弃守护（未开播重连达 20 次仍失败）：不再检测，开播后自动恢复
+                if st["given_up"]:
+                    continue
+
                 if broken:
                     statuses = {getattr(t, 'status', '') for t in broken}
+                    # 主播已未开播且任务为 complete：本场录制正常收尾，不做重连
+                    if not is_live and statuses == {"complete"}:
+                        st["was_recording"] = False
+                        _reset_retry(st)
+                        continue
                     # 画质兜底：若该任务「短命」——录制不足阈值时长（2 秒）即失败/结束，
                     # 说明当前画质无法稳定录制，优先下调一档画质重试，而非原画质反复重连。
                     if self._is_short_lived_task(s, name, broken):
                         if self._downgrade_record_quality(s, name, f"画质 {s.get('record_quality', '原画')} 录制不足 2 秒即中断"):
                             st["was_recording"] = False
                             continue
-                    _reconnect(s, name, f"检测到下载异常断开（{','.join(statuses)}）")
+                    _reconnect(s, name, f"检测到下载异常断开（{','.join(statuses)}）", is_live)
                     st["was_recording"] = False
                     continue
 
-                # b) 上轮在录且直播中，本轮任务凭空消失 → 进程崩溃/连接中断。
-                # 注意：切片操作会让任务短暂 pause，waiting 也是正常过渡态；
-                # 只要还有任何非 error/removed 的任务存在，就不算「消失」。
-                non_broken = [t for t in streamer_tasks
-                              if getattr(t, 'status', '') not in ('error', 'removed')]
-                if st["was_recording"] and not non_broken and s.get("status") == "直播中":
-                    _reconnect(s, name, "录制任务异常消失（下载进程可能已断开）")
+                if vanished:
+                    _reconnect(s, name, "录制任务异常消失（下载进程可能已断开）", is_live)
                     st["was_recording"] = False
                     continue
 
@@ -8150,10 +8254,17 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
 
     # ------------------ 录播触发 ------------------
     def _on_streamer_live_status_changed(self, streamer, new_status):
-        """直播状态变化时的录播处理（在 _monitor_loop 状态变化处调用）"""
+        """直播状态变化时的录播处理（在 _monitor_loop 状态变化处、守护刷新状态处调用）"""
         if streamer.get("platform") != "抖音":
             return
         name = streamer.get("name", "")
+        # 直播状态变化即代表进入新一场：解除「用户主动停止」标记，让守护恢复正常工作
+        # （用户手动停止只在当前场次内生效，开播/下播切换后不再阻止守护重连）
+        try:
+            if getattr(self, '_record_user_stopped', None):
+                self._record_user_stopped.discard(name)
+        except Exception:
+            pass
         if new_status == "直播中":
             # 若启用录播，自动获取直播流并提交 aria2
             if streamer.get("record_enabled", False):
@@ -8168,12 +8279,12 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 self._record_task_end_history.pop(name, None)
             except Exception:
                 pass
-            # 重置守护状态：本场结束，下次开播重新给 5 次重连机会
+            # 重置守护状态（记录最新直播状态）：本场结束，
+            # 守护切换为「未开播」策略（最多 20 次重连），下次开播自动恢复无限重试
             try:
                 guard = getattr(self, "_record_guard_state", None)
                 if isinstance(guard, dict) and name in guard:
-                    guard[name] = {"last_reconnect": 0.0, "was_recording": False,
-                                   "retry_count": 0, "first_retry_ts": 0.0, "given_up": False}
+                    guard[name] = self._new_guard_state(new_status)
             except Exception:
                 pass
             self.log_message(f"[录播] 主播 {name} 下播，已清除录制计时")
@@ -11786,13 +11897,13 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             self.log_message(f"检查哔哩哔哩直播状态出错: {e}", "error")
             return None  # 返回None表示检查失败，不更新状态
 
-    def check_douyin_live(self, url):
+    def check_douyin_live(self, url, timeout=15):
         try:
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Cookie": self.douyin_cookie
             }
-            res = requests.get(url, headers=headers, timeout=15)
+            res = requests.get(url, headers=headers, timeout=timeout)
             res.encoding = 'utf-8'
             m = re.search(r'"live_status":(\d)', res.text)
             if m:
