@@ -11909,13 +11909,19 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                         is_live = self.check_douyin_live(streamer["id"])
                         time.sleep(every_sleep)
 
-                    # 如果检查失败（is_live为None），不更新状态，避免频繁触发自动化任务。
-                    # 验证页/限流/网络波动都会导致检查失败，属常见情况，静默保持原状态、不刷日志。
+                    # 无论检查成功与否，都刷新「上次监控时间」并更新表格行，
+                    # 否则检查偶发失败时界面会像「监控队列卡住、时间一直不动」。
+                    current_time = datetime.now().strftime("%H:%M:%S")
                     if is_live is None:
+                        # 检查失败：保持原状态（不触发开播/下播动作），仅刷新时间
+                        streamer["last_check_time"] = current_time
+                        try:
+                            self.root.after(0, self._update_streamer_tree_row,
+                                            streamer, streamer.get("status", "未开播"), current_time)
+                        except Exception:
+                            pass
                         continue
 
-                    # 在这里添加时间更新
-                    current_time = datetime.now().strftime("%H:%M:%S")
                     streamer["last_check_time"] = current_time
 
                     new_status = "直播中" if is_live else "未开播"
@@ -11997,15 +12003,36 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             }
             res = requests.get(url, headers=headers, timeout=timeout)
             res.encoding = 'utf-8'
-            m = re.search(r'"live_status"\s*:\s*(\d)', res.text)
+            text = res.text or ""
+
+            # 1) 页面明文 JSON 里的 live_status 最可靠
+            m = re.search(r'"live_status"\s*:\s*(\d)', text)
             if m:
                 return m.group(1) == "1"
-            # 没有 live_status 字段时，只有页面明确出现「直播中」才判直播中；
-            # 其余情况（验证页/限流页/空页/页面结构变化）一律返回 None（未知），
-            # 由调用方保持原状态，避免把异常页面误判成「未开播」进而误触发下播转码。
-            if "直播中" in res.text:
-                return True
-            return None
+
+            # 2) RENDER_DATA 是 URL 编码后的 JSON，解码后再找一次
+            rd = re.search(r'id=["\']RENDER_DATA["\'][^>]*>(.*?)</script>', text, re.DOTALL)
+            if rd:
+                try:
+                    from urllib.parse import unquote
+                    decoded = unquote(rd.group(1))
+                    for _ in range(2):
+                        m2 = re.search(r'"live_status"\s*:\s*(\d)', decoded)
+                        if m2:
+                            return m2.group(1) == "1"
+                        decoded = unquote(decoded)
+                except Exception:
+                    pass
+
+            # 3) 异常页（风控验证页 / 空页 / HTTP 错误）无法判断 → None，
+            #    由调用方保持原状态，避免把验证页误判成「未开播」进而误触发下播转码
+            if res.status_code != 200 or len(text) < 1000:
+                return None
+            if any(k in text for k in ("验证码", "滑块验证", "安全验证", "captcha", "访问过于频繁")):
+                return None
+
+            # 4) 正常的直播间页面：有「直播中」即直播中，否则就是确实未开播
+            return "直播中" in text
         except Exception:
             # 网络超时/连接失败属常见抖动，静默返回 None（调用方据此保持原状态），不刷日志
             return None  # 返回None表示检查失败，不更新状态
