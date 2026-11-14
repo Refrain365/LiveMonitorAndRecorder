@@ -8160,13 +8160,19 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
 
             st["retry_count"] += 1
             st["last_reconnect"] = now
+            retry_no = st["retry_count"]
             if max_attempts > 0:
-                progress = f"第 {st['retry_count']}/{max_attempts} 次"
+                progress = f"第 {retry_no}/{max_attempts} 次"
             else:
-                progress = f"第 {st['retry_count']} 次（直播中无限重试）"
-            self.log_message(
-                f"[录播守护] {reason}，正在重新连接录制（{progress}，每 {retry_interval} 秒重试一次）...",
-                "warning")
+                progress = f"第 {retry_no} 次"
+            # 无限重试只输出前 3 次日志，之后完全静默（避免长时间每 5 秒刷屏）；
+            # 未开播的有限重试（5 次）次数本身很少，保留每次进度。
+            show_log = (retry_no <= 3) if max_attempts == 0 else True
+            if show_log:
+                self.log_message(
+                    f"[录播守护] {name}：{reason}，正在重连"
+                    f"（{progress}，每 {retry_interval} 秒一次）...",
+                    "warning")
             # 清理该主播已失败/残留的任务，避免占用与干扰。
             # 注意：不要清理 paused/waiting（切片暂停或排队中属正常状态，误删会打断切片）。
             try:
@@ -8180,7 +8186,8 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             # 后台线程执行，避免拖慢守护循环节奏。重试次数与间隔全部由守护层控制：
             # 未开播 5 次×5 秒≈25 秒，直播中无限次×5 秒。
             try:
-                threading.Thread(target=self._trigger_douyin_record, args=(s, True, 1), daemon=True).start()
+                threading.Thread(target=self._trigger_douyin_record,
+                                 args=(s, True, 1, show_log), daemon=True).start()
             except Exception as e:
                 self.log_message(f"[录播守护] 主播 {name} 重连失败: {e}", "error")
 
@@ -8400,7 +8407,7 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         s = seconds % 60
         return f"{h:02d}:{m:02d}:{s:02d}"
 
-    def _trigger_douyin_record(self, streamer, force=False, fetch_retries=5):
+    def _trigger_douyin_record(self, streamer, force=False, fetch_retries=5, log_fail=True):
         """获取直播流链接并提交 aria2 下载（按录播脚本模板 payload 格式）。
 
         含防重复触发保护：同一主播若已有进行中任务，或正在触发中，则跳过，避免重复提交。
@@ -8411,6 +8418,9 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         守护重连必须传 1：重试节奏由守护层统一负责（每 5 秒一次、未开播最多 5 次），
         否则会出现「守护 5 次 × 取流 5 次」的两层嵌套，且内层占着 _record_triggering 锁
         导致后续重连被跳过，25 秒的节奏根本不成立。
+
+        log_fail: 取流失败时是否输出日志。守护的无限重试只在前 3 次传 True，
+        之后传 False 完全静默，避免长时间每 5 秒刷「未获取到直播流链接」。
         """
         name = streamer.get("name", "")
         quality = streamer.get("record_quality", "原画")
@@ -8432,7 +8442,11 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             stream_urls = self._fetch_douyin_stream_urls_with_retry(
                 streamer, max_attempts=fetch_retries, interval=5)
             if not stream_urls:
-                self.log_message(f"[录播] 主播 {name} 未获取到直播流链接，录播失败", "warning")
+                if log_fail:
+                    # 取流失败在无限重试期间会高频重复，同一主播 60 秒最多提示一次
+                    self._log_throttled(
+                        f"fetch_fail:{name}",
+                        f"[录播] 主播 {name} 未获取到直播流链接，录播失败", "warning", 60)
                 return
 
             # 根据画质选择链接
@@ -8535,17 +8549,31 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         base_dir = get_app_directory()
         cookie_filename = quality_file_map.get(quality, "cookie.txt")
         cookie_path = os.path.join(base_dir, cookie_filename)
+        if not hasattr(self, "_cookie_warn_once"):
+            self._cookie_warn_once = set()
+
+        def _warn_once(flag, message, level="warning"):
+            """同一 cookie 文件的缺失/为空只提示一次，避免每次取流都刷屏。"""
+            if flag in self._cookie_warn_once:
+                return
+            self._cookie_warn_once.add(flag)
+            self.log_message(message, level)
+
         try:
             if os.path.exists(cookie_path):
                 with open(cookie_path, "r", encoding="utf-8") as f:
                     content = f.read().strip()
                 if content:
                     return content
-                self.log_message(f"[录播] {cookie_filename} 为空，回退 cookie.txt", "warning")
-            else:
-                self.log_message(f"[录播] 未找到 {cookie_filename}，回退 cookie.txt", "warning")
+                _warn_once(f"empty:{cookie_filename}",
+                           f"[录播] {cookie_filename} 为空，回退 cookie.txt")
+            elif cookie_filename != "cookie.txt":
+                # 原画用的就是 cookie.txt，缺失时不必再提示「回退 cookie.txt」这种自指日志
+                _warn_once(f"missing:{cookie_filename}",
+                           f"[录播] 未找到 {cookie_filename}，回退 cookie.txt")
         except Exception as e:
-            self.log_message(f"[录播] 读取 {cookie_filename} 失败: {e}，回退 cookie.txt", "warning")
+            _warn_once(f"error:{cookie_filename}",
+                       f"[录播] 读取 {cookie_filename} 失败: {e}，回退 cookie.txt")
 
         # 兜底：读取 cookie.txt（原画）
         fallback_path = os.path.join(base_dir, "cookie.txt")
@@ -8554,7 +8582,7 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 with open(fallback_path, "r", encoding="utf-8") as f:
                     return f.read().strip()
         except Exception as e:
-            self.log_message(f"[录播] 读取 cookie.txt 失败: {e}", "error")
+            _warn_once("error:cookie.txt", f"[录播] 读取 cookie.txt 失败: {e}", "error")
         return ""
 
     def _fetch_douyin_stream_urls_with_retry(self, streamer, max_attempts=5, interval=5):
@@ -8631,7 +8659,11 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             # 使用对应画质的录播 cookie（缺失时回退到 cookie.txt）
             quality_cookie = self._get_quality_cookie(quality)
             if not quality_cookie:
-                self.log_message(f"[录播] 未获取到画质 {quality} 的录播 cookie，改用监控 cookie", "warning")
+                # 同一画质的回退提示每小时最多一次，避免每次取流都刷屏
+                self._log_throttled(
+                    f"cookie_fallback:{quality}",
+                    f"[录播] 未获取到画质 {quality} 的录播 cookie，改用监控 cookie",
+                    "warning", 3600)
                 quality_cookie = self.douyin_cookie
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -8752,7 +8784,7 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                 self.log_message(f"[录播] 主播 {name} 获取直播流成功（画质: {list(result.keys())}）")
                 return result
 
-            self.log_message(f"[录播] 主播 {name} 所有策略均未获取到流链接", "warning")
+            # 失败详情由调用方 _trigger_douyin_record 统一汇总输出，这里不再重复打印
             return {}
         except Exception as e:
             self.log_message(f"[录播] 主播 {name} requests 方案失败: {e}", "warning")
@@ -11995,47 +12027,109 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
             self.log_message(f"检查哔哩哔哩直播状态出错: {e}", "error")
             return None  # 返回None表示检查失败，不更新状态
 
-    def check_douyin_live(self, url, timeout=15):
+    def _log_throttled(self, key, message, level="warning", interval=60):
+        """同一 key 的日志在 interval 秒内最多输出一次（抑制高频重复日志）。"""
+        if not hasattr(self, "_log_throttle_ts"):
+            self._log_throttle_ts = {}
+        now = time.time()
+        if now - self._log_throttle_ts.get(key, 0.0) < interval:
+            return
+        self._log_throttle_ts[key] = now
+        self.log_message(message, level)
+
+    def _log_live_diag(self, msg):
+        """直播状态检查诊断日志：全局 60 秒最多一条，避免刷屏。"""
+        self._log_throttled("live_diag", f"[状态诊断] {msg}", "warning", 60)
+
+    def _fetch_room_status_from_enter(self, web_rid, headers, timeout=10):
+        """通过 enter 接口取「当前房间」的直播状态（权威，不受推荐位干扰）。
+
+        直播间 HTML 页面里混有推荐位/相似直播间（similar_rooms）的完整房间数据，
+        全文搜 live_status 会取到别的房间，导致「直播中判成未开播、未开播判成直播中」。
+        enter 接口返回的 data.data[0] 就是当前房间本身。
+
+        status: 2=直播中，>=3=已结束/未开播。
+        返回 (状态, 说明)：状态 True/False；接口不可用或数据异常时为 None。
+        """
         try:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Cookie": self.douyin_cookie
-            }
+            enter_url = (
+                f"https://live.douyin.com/webcast/room/web/enter/"
+                f"?aid=6383&app_name=douyin_web&live_id=1&device_platform=web"
+                f"&language=zh-CN&enter_from=web_live&cookie_enabled=true"
+                f"&browser_language=zh-CN&browser_platform=Win32&browser_name=Edge"
+                f"&browser_version=150.0.0.0&web_rid={web_rid}&room_id_str={web_rid}"
+                f"&enter_source=&is_need_double_stream=false"
+            )
+            resp = requests.get(enter_url, headers=headers, timeout=timeout)
+            resp.encoding = 'utf-8'
+            if not (resp.text or "").strip():
+                return None, f"enter空响应(HTTP {resp.status_code})"
+            data = resp.json()
+            data_list = (data.get("data") or {}).get("data") or []
+            if not data_list:
+                return None, "enter无data.data[0]"
+            room = data_list[0]
+            try:
+                raw_status = int(room.get("status"))
+            except Exception:
+                raw_status = None
+            if raw_status == 2:
+                return True, "enter=2"
+            if raw_status is not None and raw_status >= 3:
+                return False, f"enter={raw_status}"
+            if raw_status is None:
+                has_stream = bool((room.get("stream_url") or {}).get("flv_pull_url"))
+                if has_stream:
+                    return True, "enter有流地址"
+                return None, "enter无status无流"
+            return None, f"enter={raw_status}"
+        except Exception as e:
+            return None, f"enter异常:{type(e).__name__}"
+
+    def check_douyin_live(self, url, timeout=15):
+        """检查抖音直播状态：True=直播中，False=未开播，None=无法判断（保持原状态）。
+
+        判定逻辑与历史版本保持一致（个人主页 / 直播间页通用）：
+        先看页面里的 live_status 字段，否则看是否有「直播中」文案。
+        仅当 id 是纯数字（直播间 web_rid）时才优先走 enter 接口；
+        个人主页的 sec_uid（MS4wLjABAAAA...）走 enter 必为空响应，直接跳过。
+        """
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Cookie": self.douyin_cookie
+        }
+        web_rid = ""
+        try:
+            _tail = (url or "").rstrip("/").split("/")[-1].split("?")[0]
+            if _tail.isdigit():
+                web_rid = _tail
+        except Exception:
+            web_rid = ""
+
+        enter_note = "非数字id，跳过enter"
+        if web_rid:
+            status, enter_note = self._fetch_room_status_from_enter(
+                web_rid, headers, timeout=min(timeout, 10))
+            if status is not None:
+                return status
+
+        try:
             res = requests.get(url, headers=headers, timeout=timeout)
             res.encoding = 'utf-8'
             text = res.text or ""
-
-            # 1) 页面明文 JSON 里的 live_status 最可靠
-            m = re.search(r'"live_status"\s*:\s*(\d)', text)
+            # 空响应 / HTTP 异常：无法判断，保持原状态（避免误判「未开播」触发下播转码）
+            if res.status_code != 200 or not text.strip():
+                self._log_live_diag(
+                    f"{web_rid or url} 页面异常 HTTP={res.status_code} len={len(text)}；{enter_note}")
+                return None
+            # 与历史版本完全一致：先认 live_status，再认「直播中」
+            m = re.search(r'"live_status":(\d)', text)
             if m:
                 return m.group(1) == "1"
-
-            # 2) RENDER_DATA 是 URL 编码后的 JSON，解码后再找一次
-            rd = re.search(r'id=["\']RENDER_DATA["\'][^>]*>(.*?)</script>', text, re.DOTALL)
-            if rd:
-                try:
-                    from urllib.parse import unquote
-                    decoded = unquote(rd.group(1))
-                    for _ in range(2):
-                        m2 = re.search(r'"live_status"\s*:\s*(\d)', decoded)
-                        if m2:
-                            return m2.group(1) == "1"
-                        decoded = unquote(decoded)
-                except Exception:
-                    pass
-
-            # 3) 异常页（风控验证页 / 空页 / HTTP 错误）无法判断 → None，
-            #    由调用方保持原状态，避免把验证页误判成「未开播」进而误触发下播转码
-            if res.status_code != 200 or len(text) < 1000:
-                return None
-            if any(k in text for k in ("验证码", "滑块验证", "安全验证", "captcha", "访问过于频繁")):
-                return None
-
-            # 4) 正常的直播间页面：有「直播中」即直播中，否则就是确实未开播
             return "直播中" in text
-        except Exception:
-            # 网络超时/连接失败属常见抖动，静默返回 None（调用方据此保持原状态），不刷日志
-            return None  # 返回None表示检查失败，不更新状态
+        except Exception as e:
+            self._log_live_diag(f"{web_rid or url} 请求异常 {type(e).__name__}；{enter_note}")
+            return None
 
     # ------------------ 通知 ------------------
     def send_wxpusher_notification(self, title, content):
@@ -12046,7 +12140,10 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         app_token = self.app_token.get()
         user_id = self.user_id.get()
         if not app_token or not user_id:
-            self.log_message("错误: 请先配置WxPusher信息", "error")
+            # 未配置属配置状态，不是每次发送都报错；只提示一次，避免开播/下播时刷屏
+            if not getattr(self, "_wxpusher_unconfigured_warned", False):
+                self._wxpusher_unconfigured_warned = True
+                self.log_message("提示: 尚未配置 WxPusher 的 appToken/userId，已跳过 WxPusher 通知", "warning")
             return False
         try:
             api_url = "https://wxpusher.zjiecode.com/api/send/message"
@@ -12110,20 +12207,38 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         if self.wxpusher_enabled.get() and group_methods.get("wxpusher", True):
             wx_success = self.send_wxpusher_notification(title, content)
         elif group_methods.get("wxpusher", True) and not self.wxpusher_enabled.get():
-            self.log_message(f"通知组 '{group_name}' 的WxPusher通知因全局开关关闭而未发送", "warning")
+            self._log_throttled(
+                f"notify_wx_off:{group_name}",
+                f"通知组 '{group_name}' 的WxPusher通知因全局开关关闭而未发送",
+                "warning", 3600)
 
         # 企业微信通知：全局开关开启且组设置开启
         if self.wecom_enabled.get() and group_methods.get("wecom", False):
             wecom_success = self.send_wecom_notification(title, content)
         elif group_methods.get("wecom", False) and not self.wecom_enabled.get():
-            self.log_message(f"通知组 '{group_name}' 的企业微信通知因全局开关关闭而未发送", "warning")
+            self._log_throttled(
+                f"notify_wecom_off:{group_name}",
+                f"通知组 '{group_name}' 的企业微信通知因全局开关关闭而未发送",
+                "warning", 3600)
 
-        # 记录发送结果
+        # 记录发送结果：区分「本来就没启用」和「启用了但发失败」，避免未配置时反复报 error
         if wx_success or wecom_success:
             self.log_message(
                 f"通知组 '{group_name}' 通知发送成功（WxPusher: {'是' if wx_success else '否'}, 企业微信: {'是' if wecom_success else '否'}）")
         else:
-            self.log_message(f"通知组 '{group_name}' 所有通知方式均未启用或发送失败", "error")
+            enabled_wx = self.wxpusher_enabled.get() and group_methods.get("wxpusher", True)
+            enabled_wecom = self.wecom_enabled.get() and group_methods.get("wecom", False)
+            if enabled_wx or enabled_wecom:
+                self._log_throttled(
+                    f"notify_fail:{group_name}",
+                    f"通知组 '{group_name}' 通知发送失败，请检查通知配置",
+                    "error", 60)
+            else:
+                # 全部未启用：属配置状态，不当作错误刷屏
+                self._log_throttled(
+                    f"notify_disabled:{group_name}",
+                    f"通知组 '{group_name}' 未启用任何通知方式，已跳过通知",
+                    "warning", 3600)
 
     def test_wxpusher_notification(self):
         if self.send_wxpusher_notification("测试通知", "这是一个来自开播监控助手的WxPusher测试消息"):
