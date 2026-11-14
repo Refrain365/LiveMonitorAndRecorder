@@ -7957,7 +7957,7 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
     GUARD_RETRY_INTERVAL = 5            # 秒：每 5 秒重试一次（直播中 / 未开播通用）
     GUARD_MAX_RETRY_LIVE = 0            # 主播「直播中」：0 表示无限次重试，直到录制恢复正常
     GUARD_MAX_RETRY_OFFLINE = 5         # 主播「未开播」：最多重试 5 次（下播后兜底，仍失败即放弃）
-    STATUS_CONFIRM_COUNT = 3            # 连续 N 次检测到同一新状态才切换，防接口抖动造成假开播/假下播
+    STATUS_CONFIRM_COUNT = 3            # 仅「下播」需连续 N 次确认（开播 1 次即切换），防误判下播
     OFFLINE_ACTION_POLL_INTERVAL = 5    # 秒：下播后等待活跃录制任务结束的轮询间隔
     OFFLINE_ACTION_MAX_WAIT = 1800      # 秒：最长等待，避免等待线程常驻
 
@@ -7974,21 +7974,27 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         }
 
     def _confirm_status_switch(self, streamer, new_status):
-        """直播状态防抖：连续 STATUS_CONFIRM_COUNT 次检测到同一新状态才允许切换。
+        """直播状态防抖：仅「下播」需要连续确认，开播 1 次即生效。
 
-        抖音在限流/验证页/页面结构变化时会返回不含 live_status 的页面，单次检测
-        极易误判；若立刻切换会造成「假下播 → 误转码 → 假开播」的连环抖动。
-        这里要求连续多次一致才认，未达次数时保持原状态。
+        区别对待的原因：
+        - 误判下播代价大：会清理录制计时、触发下播转码，甚至转码正在写入的 flv
+        - 误判开播代价小：只是触发一次录播尝试，取流失败由守护自动重试兜底
+        因此开播不等待，下播需连续 STATUS_CONFIRM_COUNT 次一致才认。
 
-        返回 True 表示确认可以切换到 new_status。
+        返回 True 表示允许采用 new_status。
         """
         if not hasattr(self, "_status_pending"):
             self._status_pending = {}
         skey = self._status_key(streamer)
         old_status = self.last_status.get(skey, streamer.get("status", "未开播"))
+        # 与当前状态一致：无需切换，清掉残留的确认计数
         if new_status == old_status:
             self._status_pending.pop(skey, None)
-            return False
+            return True
+        # 开播：不防抖，1 次确认立即切换
+        if new_status == "直播中":
+            self._status_pending.pop(skey, None)
+            return True
         need = max(1, int(getattr(self, "STATUS_CONFIRM_COUNT", 3)))
         pending = self._status_pending.get(skey)
         if not pending or pending.get("status") != new_status:
@@ -7999,8 +8005,7 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
         count = pending["count"]
         if count < need:
             self.log_message(
-                f"[状态防抖] {streamer.get('name', '')} 疑似"
-                f"{'开播' if new_status == '直播中' else '下播'}"
+                f"[状态防抖] {streamer.get('name', '')} 疑似下播"
                 f"（第 {count}/{need} 次确认），暂不切换状态")
             return False
         self._status_pending.pop(skey, None)
@@ -11917,7 +11922,8 @@ gitee仓库地址：https://gitee.com/Refrain365/LiveMonitorAndRecorder
                     old_status = self.last_status.get(self._status_key(streamer), "未开播")
                     # 状态防抖：连续多次检测到同一新状态才切换，避免接口抖动造成
                     # 「假下播 → 误转码 → 假开播」连环抖动（今日日志里单主播假开播 50 次）
-                    if old_status != new_status and not self._confirm_status_switch(streamer, new_status):
+                    # 注意：开播 1 次确认即切换，只有下播才需要连续多次确认。
+                    if not self._confirm_status_switch(streamer, new_status):
                         streamer["last_check_time"] = current_time
                         try:
                             self.root.after(0, self._update_streamer_tree_row,
